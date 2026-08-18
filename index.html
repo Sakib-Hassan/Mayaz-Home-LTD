@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Building Register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#efeee8; --surface:#fff; --ink:#1b2a26; --muted:#6b7370;
+  --line:#dddbd2; --accent:#145c4e; --accent-soft:#e4ece9;
+  --paid:#1c7a5a; --pending:#a3690f; --due:#9c2f2f; --idle:#8d938f;
+  --sans:'IBM Plex Sans',system-ui,sans-serif;
+  --cond:'IBM Plex Sans Condensed',var(--sans);
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --r:4px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font:400 15px/1.5 var(--sans);-webkit-text-size-adjust:100%}
+h1,h2,h3{font-family:var(--cond);font-weight:600;letter-spacing:.01em;margin:0}
+a{color:var(--accent)}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hidden{display:none !important}
+
+/* ---------- controls ---------- */
+.btn{background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:var(--r);
+     padding:9px 16px;font-weight:500;font-size:14px}
+.btn:hover{filter:brightness(1.12)}
+.btn[disabled]{opacity:.5;cursor:not-allowed;filter:none}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{background:#fff;filter:none}
+.btn.sm{padding:5px 11px;font-size:13px}
+.btn.danger{background:var(--due);border-color:var(--due)}
+input,select{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r);
+     background:#fff;color:var(--ink);width:100%}
+label{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+     color:var(--muted);margin-bottom:5px;font-weight:500}
+.field{margin-bottom:14px}
+
+/* ---------- login ---------- */
+#login{min-height:100dvh;display:grid;place-items:center;padding:22px}
+.loginbox{width:100%;max-width:380px}
+.plate{background:var(--ink);color:#f2f4f2;border-radius:var(--r);padding:22px 24px;margin-bottom:-1px}
+.plate h1{font-size:26px;color:#fff}
+.plate p{margin:6px 0 0;font-size:13px;color:#9fb0aa;font-family:var(--mono)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px 24px}
+.note{font-size:13px;color:var(--muted);margin-top:14px;line-height:1.5}
+.msg{font-size:13.5px;padding:10px 12px;border-radius:var(--r);margin-bottom:14px}
+.msg.err{background:#fbeceb;color:var(--due);border:1px solid #f0d2d0}
+.msg.ok{background:var(--accent-soft);color:var(--accent);border:1px solid #cfe0da}
+
+/* ---------- shell ---------- */
+header{background:var(--ink);color:#fff;padding:14px 20px;display:flex;
+       align-items:center;gap:14px;flex-wrap:wrap}
+header h1{font-size:19px}
+header .who{margin-left:auto;font-family:var(--mono);font-size:12px;color:#9fb0aa;text-align:right}
+nav{background:var(--surface);border-bottom:1px solid var(--line);display:flex;gap:2px;
+    padding:0 12px;overflow-x:auto;position:sticky;top:0;z-index:5}
+nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);
+    padding:13px 12px;font-weight:500;white-space:nowrap;font-size:14px}
+nav button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+main{max-width:960px;margin:0 auto;padding:22px 16px 64px}
+section>h2{font-size:20px;margin-bottom:4px}
+.sub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
+.block{margin-bottom:34px}
+
+/* ---------- the board: signature element ---------- */
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--idle);
+      border-radius:var(--r);padding:10px 11px;text-align:left}
+.tile b{display:block;font-family:var(--mono);font-size:15px;font-weight:600}
+.tile span{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.verified{border-left-color:var(--paid)}
+.tile.submitted{border-left-color:var(--pending)}
+.tile.unpaid,.tile.none{border-left-color:var(--due)}
+.tile.rejected{border-left-color:var(--due);background:#fdf6f5}
+.tile.me{box-shadow:inset 0 0 0 1px var(--accent)}
+
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:14px 0 0}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+.tally{display:flex;gap:26px;flex-wrap:wrap;margin:0 0 16px;padding:14px 16px;
+       background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.tally div b{display:block;font-family:var(--mono);font-size:22px;font-weight:600}
+.tally div span{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+
+/* ---------- tables / rows ---------- */
+.rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.row{display:flex;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);
+     flex-wrap:wrap}
+.row:first-child{border-top:0}
+.row .no{font-family:var(--mono);font-weight:600;min-width:66px}
+.row .nm{flex:1;min-width:120px}
+.row .nm small{display:block;color:var(--muted);font-size:12px}
+.row .tel{font-family:var(--mono);font-size:14px;text-decoration:none}
+.chip{font-family:var(--mono);font-size:11.5px;padding:3px 8px;border-radius:999px;
+      border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.verified{color:var(--paid);border-color:#bfded1;background:#f0f8f4}
+.chip.submitted{color:var(--pending);border-color:#e8d5ae;background:#fdf6ea}
+.chip.unpaid,.chip.none{color:var(--due);border-color:#eecfcd;background:#fdf1f0}
+.bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+.bar .field{margin:0}
+.bar .field{min-width:130px}
+.empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:14px;
+       background:var(--surface);border:1px dashed var(--line);border-radius:var(--r)}
+.split{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.amt{font-family:var(--mono);font-weight:500}
+@media (max-width:520px){
+  main{padding:18px 12px 60px}
+  .row .no{min-width:56px}
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== LOGIN ==================== -->
+<div id="login">
+  <div class="loginbox">
+    <div class="plate">
+      <h1 id="bldgName">Building Register</h1>
+      <p>30 flats · bills · contacts</p>
+    </div>
+    <div class="card">
+      <div id="loginMsg"></div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" placeholder="flat01@building.local">
+      </div>
+      <div class="field">
+        <label for="pass">Password</label>
+        <input id="pass" type="password" autocomplete="current-password">
+      </div>
+      <button class="btn" id="signIn" style="width:100%">Sign in</button>
+      <p class="note">Accounts are created by the building committee. Lost your password? Ask the committee to reset it.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== APP ==================== -->
+<div id="app" class="hidden">
+  <header>
+    <h1 id="hdrName">Building Register</h1>
+    <div class="who"><span id="whoName"></span><br><span id="whoFlat"></span></div>
+    <button class="btn ghost sm" id="signOut" style="color:#fff;border-color:#3c4f4a">Sign out</button>
+  </header>
+
+  <nav id="tabs">
+    <button data-view="board"     aria-selected="true">Bill board</button>
+    <button data-view="directory" aria-selected="false">Directory</button>
+    <button data-view="mine"      aria-selected="false">My flat</button>
+    <button data-view="admin"     aria-selected="false" class="hidden">Committee</button>
+  </nav>
+
+  <main>
+    <!-- ---------- BOARD ---------- -->
+    <section id="view-board">
+      <h2>Bill board</h2>
+      <p class="sub">Every flat, and where its bill stands this month.</p>
+      <div class="bar">
+        <div class="field">
+          <label for="period">Month</label>
+          <input id="period" type="month">
+        </div>
+      </div>
+      <div class="tally" id="tally"></div>
+      <div class="board" id="board"></div>
+      <div class="legend">
+        <span><i style="background:var(--paid)"></i>Verified by committee</span>
+        <span><i style="background:var(--pending)"></i>Copy uploaded, awaiting check</span>
+        <span><i style="background:var(--due)"></i>Not paid yet</span>
+      </div>
+    </section>
+
+    <!-- ---------- DIRECTORY ---------- -->
+    <section id="view-directory" class="hidden">
+      <div class="block">
+        <h2>Guards and services</h2>
+        <p class="sub">Tap a number to call.</p>
+        <div class="rows" id="contactRows"></div>
+      </div>
+      <div class="block">
+        <h2>Flats</h2>
+        <p class="sub">Phone index for all 30 flats.</p>
+        <div class="rows" id="flatRows"></div>
+      </div>
+    </section>
+
+    <!-- ---------- MY FLAT ---------- -->
+    <section id="view-mine" class="hidden">
+      <h2 id="mineTitle">My flat</h2>
+      <p class="sub">Upload a photo or PDF of the paid bill. The committee checks it and marks it verified.</p>
+      <div id="mineMsg"></div>
+      <div class="block">
+        <div class="card" id="mineUpload">
+          <div class="field">
+            <label for="upPeriod">Bill month</label>
+            <input id="upPeriod" type="month">
+          </div>
+          <div class="field">
+            <label for="upFile">Bill copy (JPG, PNG or PDF)</label>
+            <input id="upFile" type="file" accept="image/*,application/pdf">
+          </div>
+          <button class="btn" id="upBtn">Upload bill copy</button>
+        </div>
+      </div>
+      <div class="block">
+        <h2 style="font-size:17px;margin-bottom:10px">History</h2>
+        <div class="rows" id="mineRows"></div>
+      </div>
+    </section>
+
+    <!-- ---------- ADMIN ---------- -->
+    <section id="view-admin" class="hidden">
+      <div class="block">
+        <h2>Open a billing month</h2>
+        <p class="sub">Creates one bill line for all 30 flats. Safe to run twice — existing lines are left alone.</p>
+        <div class="bar">
+          <div class="field"><label for="genPeriod">Month</label><input id="genPeriod" type="month"></div>
+          <div class="field"><label for="genAmount">Amount per flat</label><input id="genAmount" type="number" step="0.01" placeholder="3500"></div>
+          <button class="btn" id="genBtn">Create bills</button>
+        </div>
+        <div id="genMsg"></div>
+      </div>
+
+      <div class="block">
+        <h2>Waiting to be checked</h2>
+        <p class="sub">Open the uploaded copy, then verify or send it back.</p>
+        <div class="rows" id="queueRows"></div>
+      </div>
+
+      <div class="block">
+        <h2>Flat details</h2>
+        <p class="sub">Owner name and phone shown in the directory.</p>
+        <div class="rows" id="adminFlatRows"></div>
+      </div>
+
+      <div class="block">
+        <h2>Logins</h2>
+        <p class="sub">Create the account in Supabase → Authentication → Users, then link it to a flat here.</p>
+        <div class="rows" id="userRows"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* =====================================================================
+   1. CONFIG — paste your two values here (Supabase → Project Settings → API)
+   The anon key is safe to publish: the database rules decide who sees what.
+   ===================================================================== */
+const CONFIG = {
+  url:      'https://dzvcucceooevdjnfkunt.supabase.co',
+  anonKey:  'sb_publishable_hBFkEbi_Mx9wXLrZ2pMUzg_8kh3g_bu',
+  building: 'Mayaz Home testing'     // your building's name
+};
+
+/* ===================================================================== */
+const sb = supabase.createClient(CONFIG.url, CONFIG.anonKey);
+const $  = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const thisMonth = () => new Date().toISOString().slice(0,7);
+const money = n => n == null ? '—' : Number(n).toLocaleString('en-BD',{minimumFractionDigits:0});
+const LABEL = {verified:'Verified', submitted:'Awaiting check', unpaid:'Not paid',
+               rejected:'Sent back', none:'No bill line'};
+
+let ME = null, FLATS = [], CONTACTS = [];
+
+function msg(el, text, kind='err'){
+  el.innerHTML = text ? `<div class="msg ${kind}">${esc(text)}</div>` : '';
+}
+
+/* ---------------- auth ---------------- */
+$('signIn').onclick = async () => {
+  const btn = $('signIn'); btn.disabled = true; msg($('loginMsg'),'');
+  const { error } = await sb.auth.signInWithPassword({
+    email: $('email').value.trim(), password: $('pass').value });
+  btn.disabled = false;
+  if (error) return msg($('loginMsg'), 'That email and password did not match. Check with the committee if you are unsure.');
+  start();
+};
+$('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('signIn').click(); });
+$('email').addEventListener('keydown', e => { if (e.key === 'Enter') $('pass').focus(); });
+$('signOut').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+/* ---------------- boot ---------------- */
+(async function init(){
+  $('bldgName').textContent = CONFIG.building;
+  $('hdrName').textContent  = CONFIG.building;
+  document.title = CONFIG.building;
+  const { data:{ session } } = await sb.auth.getSession();
+  if (session) start();
+})();
+
+async function start(){
+  const { data:{ user } } = await sb.auth.getUser();
+  const { data: prof } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  ME = { id:user.id, email:user.email, ...(prof || {role:'resident'}) };
+
+  const [{ data:flats }, { data:contacts }] = await Promise.all([
+    sb.from('flats').select('*').order('flat_no'),
+    sb.from('contacts').select('*').order('sort_order')
+  ]);
+  FLATS = flats || []; CONTACTS = contacts || [];
+
+  const myFlat = FLATS.find(f => f.id === ME.flat_id);
+  $('whoName').textContent = ME.full_name || ME.email;
+  $('whoFlat').textContent = ME.role === 'admin' ? 'Committee'
+                           : myFlat ? myFlat.flat_no : 'No flat linked';
+  if (ME.role === 'admin') document.querySelector('[data-view=admin]').classList.remove('hidden');
+
+  $('login').classList.add('hidden');
+  $('app').classList.remove('hidden');
+
+  $('period').value = $('upPeriod').value = $('genPeriod').value = thisMonth();
+  renderDirectory();
+  loadBoard();
+  loadMine();
+  if (ME.role === 'admin') loadAdmin();
+}
+
+/* ---------------- tabs ---------------- */
+$('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-view]'); if (!b) return;
+  [...$('tabs').children].forEach(x => x.setAttribute('aria-selected', x === b));
+  ['board','directory','mine','admin'].forEach(v =>
+    $('view-'+v).classList.toggle('hidden', v !== b.dataset.view));
+  window.scrollTo(0,0);
+});
+
+/* ---------------- bill board ---------------- */
+$('period').onchange = loadBoard;
+
+async function loadBoard(){
+  const period = $('period').value || thisMonth();
+  const { data: bills } = await sb.from('bills').select('*').eq('period', period);
+  const byFlat = Object.fromEntries((bills||[]).map(b => [b.flat_id, b]));
+
+  const count = { verified:0, submitted:0, unpaid:0 };
+  $('board').innerHTML = FLATS.map(f => {
+    const b = byFlat[f.id];
+    const st = b ? b.status : 'none';
+    if (st === 'verified') count.verified++;
+    else if (st === 'submitted') count.submitted++;
+    else count.unpaid++;
+    return `<div class="tile ${st}${f.id===ME.flat_id?' me':''}">
+      <b>${esc(f.flat_no)}</b><span>${esc(LABEL[st])}</span></div>`;
+  }).join('') || '<div class="empty">No flats yet.</div>';
+
+  $('tally').innerHTML = `
+    <div><b style="color:var(--paid)">${count.verified}</b><span>Verified</span></div>
+    <div><b style="color:var(--pending)">${count.submitted}</b><span>Awaiting check</span></div>
+    <div><b style="color:var(--due)">${count.unpaid}</b><span>Outstanding</span></div>
+    <div><b>${FLATS.length}</b><span>Flats</span></div>`;
+}
+
+/* ---------------- directory ---------------- */
+function tel(p){ return p ? `<a class="tel" href="tel:${esc(p)}">${esc(p)}</a>` : '<span class="chip">no number</span>'; }
+
+function renderDirectory(){
+  $('contactRows').innerHTML = CONTACTS.length ? CONTACTS.map(c => `
+    <div class="row"><div class="nm"><b>${esc(c.designation||c.name)}</b>
+    <small>${esc(c.name)}</small></div>${tel(c.phone)}</div>`).join('')
+    : '<div class="empty">The committee has not added guard numbers yet.</div>';
+
+  $('flatRows').innerHTML = FLATS.map(f => `
+    <div class="row"><span class="no">${esc(f.flat_no)}</span>
+    <div class="nm">${esc(f.owner_name || '—')}
+    ${f.alt_phone ? `<small>alt ${esc(f.alt_phone)}</small>` : ''}</div>
+    ${tel(f.phone)}</div>`).join('') || '<div class="empty">No flats yet.</div>';
+}
+
+/* ---------------- my flat ---------------- */
+async function loadMine(){
+  const myFlat = FLATS.find(f => f.id === ME.flat_id);
+  if (!myFlat){
+    $('mineTitle').textContent = 'My flat';
+    $('mineUpload').classList.add('hidden');
+    $('mineRows').innerHTML = '<div class="empty">Your login is not linked to a flat yet. Ask the committee to link it.</div>';
+    return;
+  }
+  $('mineTitle').textContent = myFlat.flat_no;
+  const { data: bills } = await sb.from('bills').select('*')
+    .eq('flat_id', ME.flat_id).order('period', {ascending:false});
+
+  $('mineRows').innerHTML = (bills||[]).length ? bills.map(b => `
+    <div class="row">
+      <span class="no">${esc(b.period)}</span>
+      <div class="nm"><span class="amt">${money(b.amount)}</span>
+      ${b.admin_note ? `<small>${esc(b.admin_note)}</small>` : ''}</div>
+      <span class="chip ${b.status}">${esc(LABEL[b.status])}</span>
+      ${b.receipt_path ? `<button class="btn ghost sm" data-receipt="${esc(b.receipt_path)}">View copy</button>` : ''}
+    </div>`).join('') : '<div class="empty">No bills recorded yet.</div>';
+}
+
+$('upBtn').onclick = async () => {
+  const file = $('upFile').files[0], period = $('upPeriod').value;
+  const box = $('mineMsg');
+  if (!file)   return msg(box, 'Choose the bill copy first.');
+  if (!period) return msg(box, 'Pick which month this bill is for.');
+  if (file.size > 5*1024*1024) return msg(box, 'That file is over 5 MB. Take the photo again at a smaller size.');
+
+  $('upBtn').disabled = true; msg(box,'');
+  const safe = file.name.replace(/[^\w.\-]/g,'_');
+  const path = `${ME.flat_id}/${period}/${Date.now()}_${safe}`;
+
+  const { error: upErr } = await sb.storage.from('receipts').upload(path, file);
+  if (upErr){ $('upBtn').disabled = false; return msg(box, 'Upload failed: ' + upErr.message); }
+
+  const { data: existing } = await sb.from('bills').select('id')
+    .eq('flat_id', ME.flat_id).eq('period', period).maybeSingle();
+
+  const err = existing
+    ? (await sb.from('bills').update({status:'submitted', receipt_path:path}).eq('id', existing.id)).error
+    : (await sb.from('bills').insert({flat_id:ME.flat_id, period, status:'submitted', receipt_path:path})).error;
+
+  $('upBtn').disabled = false;
+  if (err) return msg(box, 'Saved the file but could not update the bill: ' + err.message);
+  $('upFile').value = '';
+  msg(box, 'Bill copy uploaded. The committee will check it.', 'ok');
+  loadMine(); loadBoard();
+};
+
+/* open a private receipt through a short-lived signed link */
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-receipt]'); if (!b) return;
+  b.disabled = true;
+  const { data, error } = await sb.storage.from('receipts').createSignedUrl(b.dataset.receipt, 120);
+  b.disabled = false;
+  if (error) return alert('Could not open that copy: ' + error.message);
+  window.open(data.signedUrl, '_blank', 'noopener');
+});
+
+/* ---------------- committee ---------------- */
+$('genBtn').onclick = async () => {
+  const period = $('genPeriod').value, amount = $('genAmount').value;
+  if (!period) return msg($('genMsg'), 'Pick a month.');
+  $('genBtn').disabled = true;
+  const { data, error } = await sb.rpc('create_period_bills',
+    { p_period: period, p_amount: amount === '' ? null : Number(amount) });
+  $('genBtn').disabled = false;
+  msg($('genMsg'), error ? error.message : `${data} new bill lines created for ${period}.`,
+      error ? 'err' : 'ok');
+  loadBoard(); loadAdmin();
+};
+
+async function loadAdmin(){
+  const flatName = id => (FLATS.find(f => f.id === id) || {}).flat_no || id;
+
+  const { data: queue } = await sb.from('bills').select('*')
+    .eq('status','submitted').order('period',{ascending:false});
+  $('queueRows').innerHTML = (queue||[]).length ? queue.map(b => `
+    <div class="row">
+      <span class="no">${esc(flatName(b.flat_id))}</span>
+      <div class="nm">${esc(b.period)} · <span class="amt">${money(b.amount)}</span></div>
+      <div class="split">
+        ${b.receipt_path ? `<button class="btn ghost sm" data-receipt="${esc(b.receipt_path)}">View copy</button>` : '<span class="chip">no file</span>'}
+        <button class="btn sm" data-verify="${b.id}">Verify</button>
+        <button class="btn ghost sm" data-reject="${b.id}">Send back</button>
+      </div>
+    </div>`).join('') : '<div class="empty">Nothing waiting. Uploads show up here.</div>';
+
+  $('adminFlatRows').innerHTML = FLATS.map(f => `
+    <div class="row">
+      <span class="no">${esc(f.flat_no)}</span>
+      <input data-fld="owner_name" data-flat="${f.id}" value="${esc(f.owner_name||'')}" placeholder="Owner name" style="flex:1;min-width:130px">
+      <input data-fld="phone" data-flat="${f.id}" value="${esc(f.phone||'')}" placeholder="Phone" style="width:150px">
+      <button class="btn sm" data-saveflat="${f.id}">Save</button>
+    </div>`).join('');
+
+  const { data: users } = await sb.from('profiles').select('*');
+  $('userRows').innerHTML = (users||[]).map(u => `
+    <div class="row">
+      <div class="nm">${esc(u.full_name||u.id.slice(0,8))}
+        <small>${u.role === 'admin' ? 'Committee' : 'Resident'}</small></div>
+      <select data-user="${u.id}" style="width:170px">
+        <option value="">— no flat —</option>
+        ${FLATS.map(f => `<option value="${f.id}"${f.id===u.flat_id?' selected':''}>${esc(f.flat_no)}</option>`).join('')}
+      </select>
+      <button class="btn sm" data-saveuser="${u.id}">Link</button>
+    </div>`).join('');
+}
+
+document.addEventListener('click', async e => {
+  const t = e.target;
+
+  if (t.dataset.verify || t.dataset.reject){
+    const id = t.dataset.verify || t.dataset.reject;
+    const verify = !!t.dataset.verify;
+    let note = null;
+    if (!verify){ note = prompt('What should the resident fix?', 'Copy is not readable — please upload again.'); if (note === null) return; }
+    t.disabled = true;
+    const { error } = await sb.from('bills').update(verify
+      ? { status:'verified', verified_at:new Date().toISOString(), verified_by:ME.id, admin_note:null }
+      : { status:'rejected', admin_note:note }).eq('id', id);
+    if (error) alert(error.message);
+    loadAdmin(); loadBoard();
+  }
+
+  if (t.dataset.saveflat){
+    const id = t.dataset.saveflat;
+    const val = f => document.querySelector(`[data-fld="${f}"][data-flat="${id}"]`).value.trim();
+    t.disabled = true;
+    const { error } = await sb.from('flats')
+      .update({ owner_name: val('owner_name') || null, phone: val('phone') || null })
+      .eq('id', id);
+    t.disabled = false;
+    if (error) return alert(error.message);
+    t.textContent = 'Saved';
+    setTimeout(() => { t.textContent = 'Save'; }, 1500);
+    const f = FLATS.find(x => x.id == id);
+    f.owner_name = val('owner_name'); f.phone = val('phone');
+    renderDirectory();
+  }
+
+  if (t.dataset.saveuser){
+    const id = t.dataset.saveuser;
+    const sel = document.querySelector(`select[data-user="${id}"]`).value;
+    t.disabled = true;
+    const { error } = await sb.from('profiles')
+      .update({ flat_id: sel === '' ? null : Number(sel) }).eq('id', id);
+    t.disabled = false;
+    if (error) return alert(error.message);
+    t.textContent = 'Linked';
+    setTimeout(() => { t.textContent = 'Link'; }, 1500);
+  }
+});
+</script>
+</body>
+</html>
