@@ -1,0 +1,48 @@
+# Keeps the Supabase project awake.
+#
+# Free Supabase projects pause after 7 days with no database activity. Residents
+# only use this app at the start and end of the month, which leaves a ~20 day
+# gap in the middle — long enough to trigger the pause. This runs a harmless
+# one-row query twice a week so the timer never runs out.
+#
+# Put this file at:  .github/workflows/keep-awake.yml
+
+name: Keep Supabase awake
+
+on:
+  schedule:
+    # 03:00 UTC every Monday and Thursday (09:00 Dhaka time)
+    - cron: '0 3 * * 1,4'
+  workflow_dispatch:        # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write           # needed for the heartbeat commit below
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query the database
+        run: |
+          code=$(curl -s -o /tmp/out.txt -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/flats?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_KEY }}")
+          echo "HTTP $code"
+          cat /tmp/out.txt
+          if [ "$code" != "200" ]; then
+            echo "::error::Supabase did not answer with 200. The project may be paused already, or the key is wrong."
+            exit 1
+          fi
+
+      # GitHub switches off scheduled workflows in a repo that has had no commits
+      # for 60 days. This tiny commit keeps the schedule itself alive.
+      - uses: actions/checkout@v4
+      - name: Heartbeat commit
+        run: |
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .last-ping
+          git config user.name  "keep-awake"
+          git config user.email "actions@github.com"
+          git add .last-ping
+          git diff --staged --quiet || git commit -m "keep-awake ping"
+          git push
