@@ -310,7 +310,7 @@ section>h2{font-size:20px;margin-bottom:4px}
    The publishable key is safe to publish: the database rules decide access.
    ===================================================================== */
 const CONFIG = {
- url:      'https://dzvcucceooevdjnfkunt.supabase.co',
+  url:      'https://dzvcucceooevdjnfkunt.supabase.co',
   anonKey:  'sb_publishable_hBFkEbi_Mx9wXLrZ2pMUzg_8kh3g_bu',
   building: 'Mayaz Home testing'     // your building's name
 };
@@ -336,10 +336,32 @@ const canSeeNid = f => ME.role === 'admin' || f.id === ME.flat_id;
 /* ---------------- auth ---------------- */
 $('signIn').onclick = async () => {
   const btn = $('signIn'); btn.disabled = true; msg($('loginMsg'),'');
-  const { error } = await sb.auth.signInWithPassword({
-    email: $('email').value.trim(), password: $('pass').value });
+
+  if (CONFIG.url.includes('YOUR-PROJECT-REF') || CONFIG.anonKey.includes('YOUR-')) {
+    btn.disabled = false;
+    return msg($('loginMsg'), 'This page has not been configured yet — the CONFIG block near the bottom of index.html still has the placeholder values.');
+  }
+
+  let error;
+  try {
+    ({ error } = await sb.auth.signInWithPassword({
+      email: $('email').value.trim(), password: $('pass').value }));
+  } catch (e) { error = e; }
   btn.disabled = false;
-  if (error) return msg($('loginMsg'), 'That email and password did not match. Check with the committee if you are unsure.');
+
+  if (error){
+    const m = (error.message || '').toLowerCase();
+    console.error('Sign-in failed:', error);
+    if (m.includes('invalid login credentials'))
+      return msg($('loginMsg'), 'That email and password did not match. Check with the committee if you are unsure.');
+    if (m.includes('email not confirmed'))
+      return msg($('loginMsg'), 'This account was created without "Auto Confirm User". The committee needs to confirm it in Supabase.');
+    if (m.includes('api key') || m.includes('invalid api'))
+      return msg($('loginMsg'), 'The publishable key in index.html is wrong or incomplete. Copy it again from Supabase → Settings → API Keys.');
+    if (m.includes('failed to fetch') || m.includes('networkerror'))
+      return msg($('loginMsg'), 'Could not reach Supabase. The project URL may be wrong, or the project is paused — check the Supabase dashboard.');
+    return msg($('loginMsg'), 'Sign-in failed: ' + (error.message || error));
+  }
   start();
 };
 $('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('signIn').click(); });
@@ -653,7 +675,7 @@ async function loadAdmin(){
             <input data-fld="tenant_phone" data-flat="${f.id}" value="${esc(f.tenant_phone||'')}" placeholder="Tenant phone">
           </div>
         </div>`}
-      </div>`).join('')).join('');
+      </div>`).join('')}`).join('');
 
   const { data: users } = await sb.from('profiles').select('*');
   $('userRows').innerHTML = (users||[]).map(u => `
