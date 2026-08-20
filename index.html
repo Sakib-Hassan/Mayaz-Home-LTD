@@ -26,7 +26,6 @@ button{font:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .hidden{display:none !important}
 
-/* ---------- controls ---------- */
 .btn{background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:var(--r);
      padding:9px 16px;font-weight:500;font-size:14px}
 .btn:hover{filter:brightness(1.12)}
@@ -34,14 +33,12 @@ button{font:inherit;cursor:pointer}
 .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
 .btn.ghost:hover{background:#fff;filter:none}
 .btn.sm{padding:5px 11px;font-size:13px}
-.btn.danger{background:var(--due);border-color:var(--due)}
 input,select{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r);
      background:#fff;color:var(--ink);width:100%}
 label{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
      color:var(--muted);margin-bottom:5px;font-weight:500}
 .field{margin-bottom:14px}
 
-/* ---------- login ---------- */
 #login{min-height:100dvh;display:grid;place-items:center;padding:22px}
 .loginbox{width:100%;max-width:380px}
 .plate{background:var(--ink);color:#f2f4f2;border-radius:var(--r);padding:22px 24px;margin-bottom:-1px}
@@ -53,7 +50,6 @@ label{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase
 .msg.err{background:#fbeceb;color:var(--due);border:1px solid #f0d2d0}
 .msg.ok{background:var(--accent-soft);color:var(--accent);border:1px solid #cfe0da}
 
-/* ---------- shell ---------- */
 header{background:var(--ink);color:#fff;padding:14px 20px;display:flex;
        align-items:center;gap:14px;flex-wrap:wrap}
 header h1{font-size:19px}
@@ -68,8 +64,12 @@ section>h2{font-size:20px;margin-bottom:4px}
 .sub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
 .block{margin-bottom:34px}
 
-/* ---------- the board: signature element ---------- */
-.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.blockhead{font-family:var(--cond);font-size:13px;font-weight:600;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted);margin:22px 0 8px;
+    padding-bottom:6px;border-bottom:1px solid var(--line)}
+.blockhead:first-child{margin-top:0}
+
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
 .tile{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--idle);
       border-radius:var(--r);padding:10px 11px;text-align:left}
 .tile b{display:block;font-family:var(--mono);font-size:15px;font-weight:600}
@@ -88,7 +88,6 @@ section>h2{font-size:20px;margin-bottom:4px}
 .tally div b{display:block;font-family:var(--mono);font-size:22px;font-weight:600}
 .tally div span{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 
-/* ---------- tables / rows ---------- */
 .rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
 .row{display:flex;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);
      flex-wrap:wrap}
@@ -97,21 +96,37 @@ section>h2{font-size:20px;margin-bottom:4px}
 .row .nm{flex:1;min-width:120px}
 .row .nm small{display:block;color:var(--muted);font-size:12px}
 .row .tel{font-family:var(--mono);font-size:14px;text-decoration:none}
+
+/* flat card in the directory */
+.flatcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+    padding:12px 14px;margin-bottom:8px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.flatcard .fno{font-family:var(--mono);font-size:17px;font-weight:600;min-width:52px}
+.flatcard .parties{flex:1;min-width:210px;display:flex;gap:22px;flex-wrap:wrap}
+.party{min-width:180px}
+.party .tag{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+    font-weight:500;margin-bottom:2px}
+.party .pn{font-weight:500}
+.party .none{color:var(--muted);font-style:italic;font-weight:400}
+.meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:right;min-width:96px}
+
+.bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+.bar .field{margin:0;min-width:130px}
+.empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:14px;
+       background:var(--surface);border:1px dashed var(--line);border-radius:var(--r)}
+.split{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .chip{font-family:var(--mono);font-size:11.5px;padding:3px 8px;border-radius:999px;
       border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 .chip.verified{color:var(--paid);border-color:#bfded1;background:#f0f8f4}
 .chip.submitted{color:var(--pending);border-color:#e8d5ae;background:#fdf6ea}
 .chip.unpaid,.chip.none{color:var(--due);border-color:#eecfcd;background:#fdf1f0}
-.bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
-.bar .field{margin:0}
-.bar .field{min-width:130px}
-.empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:14px;
-       background:var(--surface);border:1px dashed var(--line);border-radius:var(--r)}
-.split{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .amt{font-family:var(--mono);font-weight:500}
-@media (max-width:520px){
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.legalnote{font-size:12.5px;color:var(--muted);border-left:2px solid var(--line);
+    padding-left:12px;margin:14px 0 0;line-height:1.5}
+@media (max-width:560px){
   main{padding:18px 12px 60px}
-  .row .no{min-width:56px}
+  .two{grid-template-columns:1fr}
+  .meta{text-align:left}
 }
 </style>
 </head>
@@ -122,13 +137,13 @@ section>h2{font-size:20px;margin-bottom:4px}
   <div class="loginbox">
     <div class="plate">
       <h1 id="bldgName">Building Register</h1>
-      <p>30 flats · bills · contacts</p>
+      <p>30 flats · A B C D</p>
     </div>
     <div class="card">
       <div id="loginMsg"></div>
       <div class="field">
         <label for="email">Email</label>
-        <input id="email" type="email" autocomplete="username" placeholder="flat01@building.local">
+        <input id="email" type="email" autocomplete="username" placeholder="1a@building.local">
       </div>
       <div class="field">
         <label for="pass">Password</label>
@@ -150,7 +165,7 @@ section>h2{font-size:20px;margin-bottom:4px}
 
   <nav id="tabs">
     <button data-view="board"     aria-selected="true">Bill board</button>
-    <button data-view="directory" aria-selected="false">Directory</button>
+    <button data-view="directory" aria-selected="false">Phone index</button>
     <button data-view="mine"      aria-selected="false">My flat</button>
     <button data-view="admin"     aria-selected="false" class="hidden">Committee</button>
   </nav>
@@ -159,7 +174,7 @@ section>h2{font-size:20px;margin-bottom:4px}
     <!-- ---------- BOARD ---------- -->
     <section id="view-board">
       <h2>Bill board</h2>
-      <p class="sub">Every flat, and where its bill stands this month.</p>
+      <p class="sub">Every meter in the building, and where its bill stands this month.</p>
       <div class="bar">
         <div class="field">
           <label for="period">Month</label>
@@ -167,7 +182,7 @@ section>h2{font-size:20px;margin-bottom:4px}
         </div>
       </div>
       <div class="tally" id="tally"></div>
-      <div class="board" id="board"></div>
+      <div id="board"></div>
       <div class="legend">
         <span><i style="background:var(--paid)"></i>Verified by committee</span>
         <span><i style="background:var(--pending)"></i>Copy uploaded, awaiting check</span>
@@ -184,17 +199,56 @@ section>h2{font-size:20px;margin-bottom:4px}
       </div>
       <div class="block">
         <h2>Flats</h2>
-        <p class="sub">Phone index for all 30 flats.</p>
-        <div class="rows" id="flatRows"></div>
+        <p class="sub">Owner and tenant for all 30 flats, block by block.</p>
+        <div id="flatCards"></div>
       </div>
     </section>
 
     <!-- ---------- MY FLAT ---------- -->
     <section id="view-mine" class="hidden">
       <h2 id="mineTitle">My flat</h2>
-      <p class="sub">Upload a photo or PDF of the paid bill. The committee checks it and marks it verified.</p>
+      <p class="sub">Keep your own details up to date, and upload each month's paid bill.</p>
       <div id="mineMsg"></div>
+
+      <div class="block" id="mineDetails">
+        <h2 style="font-size:17px;margin-bottom:10px">Flat details</h2>
+        <div class="card">
+          <div class="two">
+            <div class="field"><label for="dOwnerName">Owner name</label>
+              <input id="dOwnerName" placeholder="Full name"></div>
+            <div class="field"><label for="dOwnerPhone">Owner phone</label>
+              <input id="dOwnerPhone" placeholder="01XXXXXXXXX"></div>
+          </div>
+          <div class="field">
+            <label for="dOwnerNid">Owner identification (NID)</label>
+            <div class="split">
+              <input id="dOwnerNid" type="file" accept="image/*,application/pdf" style="flex:1;min-width:180px">
+              <button class="btn ghost sm hidden" id="dOwnerNidView">View current</button>
+            </div>
+          </div>
+
+          <div class="two" style="margin-top:8px">
+            <div class="field"><label for="dTenantName">Tenant name</label>
+              <input id="dTenantName" placeholder="Leave blank if owner occupied"></div>
+            <div class="field"><label for="dTenantPhone">Tenant phone</label>
+              <input id="dTenantPhone" placeholder="01XXXXXXXXX"></div>
+          </div>
+          <div class="field">
+            <label for="dTenantNid">Tenant identification (NID)</label>
+            <div class="split">
+              <input id="dTenantNid" type="file" accept="image/*,application/pdf" style="flex:1;min-width:180px">
+              <button class="btn ghost sm hidden" id="dTenantNidView">View current</button>
+            </div>
+          </div>
+
+          <button class="btn" id="dSave">Save details</button>
+          <p class="legalnote">Names and phone numbers appear in the phone index for every resident.
+            NID copies do not — only your flat and the committee can open them.</p>
+        </div>
+      </div>
+
       <div class="block">
+        <h2 style="font-size:17px;margin-bottom:10px">Upload a paid bill</h2>
         <div class="card" id="mineUpload">
           <div class="field">
             <label for="upPeriod">Bill month</label>
@@ -207,6 +261,7 @@ section>h2{font-size:20px;margin-bottom:4px}
           <button class="btn" id="upBtn">Upload bill copy</button>
         </div>
       </div>
+
       <div class="block">
         <h2 style="font-size:17px;margin-bottom:10px">History</h2>
         <div class="rows" id="mineRows"></div>
@@ -217,10 +272,11 @@ section>h2{font-size:20px;margin-bottom:4px}
     <section id="view-admin" class="hidden">
       <div class="block">
         <h2>Open a billing month</h2>
-        <p class="sub">Creates one bill line for all 30 flats. Safe to run twice — existing lines are left alone.</p>
+        <p class="sub">Creates one bill line for each of the 30 flats. Leave the master meter figure blank to skip it.</p>
         <div class="bar">
           <div class="field"><label for="genPeriod">Month</label><input id="genPeriod" type="month"></div>
           <div class="field"><label for="genAmount">Amount per flat</label><input id="genAmount" type="number" step="0.01" placeholder="3500"></div>
+          <div class="field"><label for="genCommon">Master meter</label><input id="genCommon" type="number" step="0.01" placeholder="optional"></div>
           <button class="btn" id="genBtn">Create bills</button>
         </div>
         <div id="genMsg"></div>
@@ -233,9 +289,9 @@ section>h2{font-size:20px;margin-bottom:4px}
       </div>
 
       <div class="block">
-        <h2>Flat details</h2>
-        <p class="sub">Owner name and phone shown in the directory.</p>
-        <div class="rows" id="adminFlatRows"></div>
+        <h2>Flat records</h2>
+        <p class="sub">Meter number, owner and tenant. Residents can edit their own; you can edit any.</p>
+        <div id="adminFlatRows"></div>
       </div>
 
       <div class="block">
@@ -250,11 +306,11 @@ section>h2{font-size:20px;margin-bottom:4px}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* =====================================================================
-   1. CONFIG — paste your two values here (Supabase → Project Settings → API)
-   The anon key is safe to publish: the database rules decide who sees what.
+   CONFIG — paste your two values here (Supabase → Settings → API Keys)
+   The publishable key is safe to publish: the database rules decide access.
    ===================================================================== */
 const CONFIG = {
-  url:      'https://dzvcucceooevdjnfkunt.supabase.co',
+ url:      'https://dzvcucceooevdjnfkunt.supabase.co',
   anonKey:  'sb_publishable_hBFkEbi_Mx9wXLrZ2pMUzg_8kh3g_bu',
   building: 'Mayaz Home testing'     // your building's name
 };
@@ -268,12 +324,14 @@ const thisMonth = () => new Date().toISOString().slice(0,7);
 const money = n => n == null ? '—' : Number(n).toLocaleString('en-BD',{minimumFractionDigits:0});
 const LABEL = {verified:'Verified', submitted:'Awaiting check', unpaid:'Not paid',
                rejected:'Sent back', none:'No bill line'};
+const BLOCKNAME = {A:'Block A', B:'Block B', C:'Block C', D:'Block D'};
 
 let ME = null, FLATS = [], CONTACTS = [];
 
-function msg(el, text, kind='err'){
+const msg = (el, text, kind='err') =>
   el.innerHTML = text ? `<div class="msg ${kind}">${esc(text)}</div>` : '';
-}
+const myFlat = () => FLATS.find(f => f.id === ME.flat_id);
+const canSeeNid = f => ME.role === 'admin' || f.id === ME.flat_id;
 
 /* ---------------- auth ---------------- */
 $('signIn').onclick = async () => {
@@ -302,16 +360,13 @@ async function start(){
   const { data: prof } = await sb.from('profiles').select('*').eq('id', user.id).single();
   ME = { id:user.id, email:user.email, ...(prof || {role:'resident'}) };
 
-  const [{ data:flats }, { data:contacts }] = await Promise.all([
-    sb.from('flats').select('*').order('flat_no'),
-    sb.from('contacts').select('*').order('sort_order')
-  ]);
-  FLATS = flats || []; CONTACTS = contacts || [];
+  await refreshFlats();
+  const { data: contacts } = await sb.from('contacts').select('*').order('sort_order');
+  CONTACTS = contacts || [];
 
-  const myFlat = FLATS.find(f => f.id === ME.flat_id);
   $('whoName').textContent = ME.full_name || ME.email;
   $('whoFlat').textContent = ME.role === 'admin' ? 'Committee'
-                           : myFlat ? myFlat.flat_no : 'No flat linked';
+                           : myFlat() ? myFlat().flat_no : 'No flat linked';
   if (ME.role === 'admin') document.querySelector('[data-view=admin]').classList.remove('hidden');
 
   $('login').classList.add('hidden');
@@ -324,6 +379,12 @@ async function start(){
   if (ME.role === 'admin') loadAdmin();
 }
 
+async function refreshFlats(){
+  const { data } = await sb.from('flats').select('*')
+    .order('is_common').order('block').order('flat_number');
+  FLATS = data || [];
+}
+
 /* ---------------- tabs ---------------- */
 $('tabs').addEventListener('click', e => {
   const b = e.target.closest('button[data-view]'); if (!b) return;
@@ -333,6 +394,18 @@ $('tabs').addEventListener('click', e => {
   window.scrollTo(0,0);
 });
 
+/* group flats into [{head, flats}] — A, B, C, D, then the master meter */
+function grouped(){
+  const out = [];
+  for (const f of FLATS){
+    const head = f.is_common ? 'Common areas' : (BLOCKNAME[f.block] || 'Other');
+    let g = out[out.length-1];
+    if (!g || g.head !== head) out.push(g = { head, flats:[] });
+    g.flats.push(f);
+  }
+  return out;
+}
+
 /* ---------------- bill board ---------------- */
 $('period').onchange = loadBoard;
 
@@ -340,27 +413,40 @@ async function loadBoard(){
   const period = $('period').value || thisMonth();
   const { data: bills } = await sb.from('bills').select('*').eq('period', period);
   const byFlat = Object.fromEntries((bills||[]).map(b => [b.flat_id, b]));
-
   const count = { verified:0, submitted:0, unpaid:0 };
-  $('board').innerHTML = FLATS.map(f => {
-    const b = byFlat[f.id];
-    const st = b ? b.status : 'none';
-    if (st === 'verified') count.verified++;
-    else if (st === 'submitted') count.submitted++;
-    else count.unpaid++;
-    return `<div class="tile ${st}${f.id===ME.flat_id?' me':''}">
-      <b>${esc(f.flat_no)}</b><span>${esc(LABEL[st])}</span></div>`;
-  }).join('') || '<div class="empty">No flats yet.</div>';
+
+  $('board').innerHTML = grouped().map(g => `
+    <div class="blockhead">${esc(g.head)}</div>
+    <div class="board">${g.flats.map(f => {
+      const b = byFlat[f.id];
+      const st = b ? b.status : 'none';
+      if (!f.is_common){
+        if (st === 'verified') count.verified++;
+        else if (st === 'submitted') count.submitted++;
+        else count.unpaid++;
+      }
+      return `<div class="tile ${st}${f.id===ME.flat_id?' me':''}">
+        <b>${esc(f.flat_no)}</b><span>${esc(LABEL[st])}</span></div>`;
+    }).join('')}</div>`).join('') || '<div class="empty">No flats yet.</div>';
 
   $('tally').innerHTML = `
     <div><b style="color:var(--paid)">${count.verified}</b><span>Verified</span></div>
     <div><b style="color:var(--pending)">${count.submitted}</b><span>Awaiting check</span></div>
     <div><b style="color:var(--due)">${count.unpaid}</b><span>Outstanding</span></div>
-    <div><b>${FLATS.length}</b><span>Flats</span></div>`;
+    <div><b>${FLATS.filter(f=>!f.is_common).length}</b><span>Flats</span></div>`;
 }
 
 /* ---------------- directory ---------------- */
-function tel(p){ return p ? `<a class="tel" href="tel:${esc(p)}">${esc(p)}</a>` : '<span class="chip">no number</span>'; }
+const tel = p => p ? `<a class="tel" href="tel:${esc(p)}">${esc(p)}</a>`
+                   : '<span class="none">no number</span>';
+
+function party(tag, name, phone, nidPath, f){
+  const view = nidPath && canSeeNid(f)
+    ? ` <button class="btn ghost sm" data-doc="${esc(nidPath)}">NID</button>` : '';
+  return `<div class="party"><div class="tag">${tag}</div>
+    <div class="pn">${name ? esc(name) : '<span class="none">not recorded</span>'}</div>
+    <div>${tel(phone)}${view}</div></div>`;
+}
 
 function renderDirectory(){
   $('contactRows').innerHTML = CONTACTS.length ? CONTACTS.map(c => `
@@ -368,25 +454,49 @@ function renderDirectory(){
     <small>${esc(c.name)}</small></div>${tel(c.phone)}</div>`).join('')
     : '<div class="empty">The committee has not added guard numbers yet.</div>';
 
-  $('flatRows').innerHTML = FLATS.map(f => `
-    <div class="row"><span class="no">${esc(f.flat_no)}</span>
-    <div class="nm">${esc(f.owner_name || '—')}
-    ${f.alt_phone ? `<small>alt ${esc(f.alt_phone)}</small>` : ''}</div>
-    ${tel(f.phone)}</div>`).join('') || '<div class="empty">No flats yet.</div>';
+  $('flatCards').innerHTML = grouped().map(g => `
+    <div class="blockhead">${esc(g.head)}</div>
+    ${g.flats.map(f => f.is_common ? `
+      <div class="flatcard">
+        <div class="fno">—</div>
+        <div class="parties"><div class="party">
+          <div class="tag">${esc(f.flat_no)}</div>
+          <div class="pn">${esc(f.owner_name || 'Common meter')}</div>
+          <div><span class="none">committee responsibility</span></div>
+        </div></div>
+        <div class="meta">${f.meter_no ? 'Meter '+esc(f.meter_no) : ''}</div>
+      </div>` : `
+      <div class="flatcard">
+        <div class="fno">${esc(f.flat_no)}</div>
+        <div class="parties">
+          ${party('Owner',  f.owner_name,  f.phone,        f.owner_nid_path,  f)}
+          ${party('Tenant', f.tenant_name, f.tenant_phone, f.tenant_nid_path, f)}
+        </div>
+        <div class="meta">${f.tenant_name ? 'Rented' : 'Owner occupied'}
+          ${f.meter_no ? '<br>Meter '+esc(f.meter_no) : ''}</div>
+      </div>`).join('')}`).join('');
 }
 
 /* ---------------- my flat ---------------- */
 async function loadMine(){
-  const myFlat = FLATS.find(f => f.id === ME.flat_id);
-  if (!myFlat){
+  const f = myFlat();
+  if (!f){
     $('mineTitle').textContent = 'My flat';
+    $('mineDetails').classList.add('hidden');
     $('mineUpload').classList.add('hidden');
     $('mineRows').innerHTML = '<div class="empty">Your login is not linked to a flat yet. Ask the committee to link it.</div>';
     return;
   }
-  $('mineTitle').textContent = myFlat.flat_no;
+  $('mineTitle').textContent = 'Flat ' + f.flat_no;
+  $('dOwnerName').value  = f.owner_name   || '';
+  $('dOwnerPhone').value = f.phone        || '';
+  $('dTenantName').value = f.tenant_name  || '';
+  $('dTenantPhone').value= f.tenant_phone || '';
+  toggleDoc('dOwnerNidView',  f.owner_nid_path);
+  toggleDoc('dTenantNidView', f.tenant_nid_path);
+
   const { data: bills } = await sb.from('bills').select('*')
-    .eq('flat_id', ME.flat_id).order('period', {ascending:false});
+    .eq('flat_id', f.id).order('period', {ascending:false});
 
   $('mineRows').innerHTML = (bills||[]).length ? bills.map(b => `
     <div class="row">
@@ -397,6 +507,50 @@ async function loadMine(){
       ${b.receipt_path ? `<button class="btn ghost sm" data-receipt="${esc(b.receipt_path)}">View copy</button>` : ''}
     </div>`).join('') : '<div class="empty">No bills recorded yet.</div>';
 }
+
+function toggleDoc(btnId, path){
+  const b = $(btnId);
+  b.classList.toggle('hidden', !path);
+  if (path) b.dataset.doc = path;
+}
+
+async function uploadDoc(input, who){
+  const file = input.files[0];
+  if (!file) return null;
+  if (file.size > 5*1024*1024) throw new Error('That file is over 5 MB. Take the photo again at a smaller size.');
+  const safe = file.name.replace(/[^\w.\-]/g,'_');
+  const path = `${ME.flat_id}/nid/${who}_${Date.now()}_${safe}`;
+  const { error } = await sb.storage.from('documents').upload(path, file);
+  if (error) throw error;
+  return path;
+}
+
+$('dSave').onclick = async () => {
+  const box = $('mineMsg'); msg(box,''); $('dSave').disabled = true;
+  try {
+    const patch = {
+      owner_name:   $('dOwnerName').value.trim()  || null,
+      phone:        $('dOwnerPhone').value.trim() || null,
+      tenant_name:  $('dTenantName').value.trim() || null,
+      tenant_phone: $('dTenantPhone').value.trim()|| null
+    };
+    const o = await uploadDoc($('dOwnerNid'),  'owner');
+    if (o) patch.owner_nid_path = o;
+    const t = await uploadDoc($('dTenantNid'), 'tenant');
+    if (t) patch.tenant_nid_path = t;
+
+    const { error } = await sb.from('flats').update(patch).eq('id', ME.flat_id);
+    if (error) throw error;
+
+    $('dOwnerNid').value = ''; $('dTenantNid').value = '';
+    await refreshFlats();
+    renderDirectory(); loadMine();
+    msg(box, 'Details saved.', 'ok');
+  } catch (e) {
+    msg(box, e.message || String(e));
+  }
+  $('dSave').disabled = false;
+};
 
 $('upBtn').onclick = async () => {
   const file = $('upFile').files[0], period = $('upPeriod').value;
@@ -426,23 +580,30 @@ $('upBtn').onclick = async () => {
   loadMine(); loadBoard();
 };
 
-/* open a private receipt through a short-lived signed link */
-document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-receipt]'); if (!b) return;
-  b.disabled = true;
-  const { data, error } = await sb.storage.from('receipts').createSignedUrl(b.dataset.receipt, 120);
-  b.disabled = false;
-  if (error) return alert('Could not open that copy: ' + error.message);
+/* open a private file through a short-lived signed link */
+async function openSigned(bucket, path, btn){
+  btn.disabled = true;
+  const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 120);
+  btn.disabled = false;
+  if (error) return alert('Could not open that file: ' + error.message);
   window.open(data.signedUrl, '_blank', 'noopener');
+}
+document.addEventListener('click', e => {
+  const r = e.target.closest('[data-receipt]');
+  if (r) return openSigned('receipts', r.dataset.receipt, r);
+  const d = e.target.closest('[data-doc]');
+  if (d) return openSigned('documents', d.dataset.doc, d);
 });
 
 /* ---------------- committee ---------------- */
 $('genBtn').onclick = async () => {
-  const period = $('genPeriod').value, amount = $('genAmount').value;
+  const period = $('genPeriod').value, amount = $('genAmount').value, common = $('genCommon').value;
   if (!period) return msg($('genMsg'), 'Pick a month.');
   $('genBtn').disabled = true;
-  const { data, error } = await sb.rpc('create_period_bills',
-    { p_period: period, p_amount: amount === '' ? null : Number(amount) });
+  const { data, error } = await sb.rpc('create_period_bills', {
+    p_period: period,
+    p_amount: amount === '' ? null : Number(amount),
+    p_common_amount: common === '' ? null : Number(common) });
   $('genBtn').disabled = false;
   msg($('genMsg'), error ? error.message : `${data} new bill lines created for ${period}.`,
       error ? 'err' : 'ok');
@@ -465,13 +626,34 @@ async function loadAdmin(){
       </div>
     </div>`).join('') : '<div class="empty">Nothing waiting. Uploads show up here.</div>';
 
-  $('adminFlatRows').innerHTML = FLATS.map(f => `
-    <div class="row">
-      <span class="no">${esc(f.flat_no)}</span>
-      <input data-fld="owner_name" data-flat="${f.id}" value="${esc(f.owner_name||'')}" placeholder="Owner name" style="flex:1;min-width:130px">
-      <input data-fld="phone" data-flat="${f.id}" value="${esc(f.phone||'')}" placeholder="Phone" style="width:150px">
-      <button class="btn sm" data-saveflat="${f.id}">Save</button>
-    </div>`).join('');
+  $('adminFlatRows').innerHTML = grouped().map(g => `
+    <div class="blockhead">${esc(g.head)}</div>
+    ${g.flats.map(f => `
+      <div class="flatcard" style="display:block">
+        <div class="split" style="margin-bottom:8px">
+          <span class="fno">${esc(f.flat_no)}</span>
+          <input data-fld="meter_no" data-flat="${f.id}" value="${esc(f.meter_no||'')}"
+                 placeholder="Meter no" style="width:130px">
+          ${f.owner_nid_path ? `<button class="btn ghost sm" data-doc="${esc(f.owner_nid_path)}">Owner NID</button>` : ''}
+          ${f.tenant_nid_path ? `<button class="btn ghost sm" data-doc="${esc(f.tenant_nid_path)}">Tenant NID</button>` : ''}
+          <button class="btn sm" data-saveflat="${f.id}" style="margin-left:auto">Save</button>
+        </div>
+        ${f.is_common ? '' : `
+        <div class="two">
+          <div class="field" style="margin-bottom:8px">
+            <input data-fld="owner_name" data-flat="${f.id}" value="${esc(f.owner_name||'')}" placeholder="Owner name">
+          </div>
+          <div class="field" style="margin-bottom:8px">
+            <input data-fld="phone" data-flat="${f.id}" value="${esc(f.phone||'')}" placeholder="Owner phone">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <input data-fld="tenant_name" data-flat="${f.id}" value="${esc(f.tenant_name||'')}" placeholder="Tenant name">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <input data-fld="tenant_phone" data-flat="${f.id}" value="${esc(f.tenant_phone||'')}" placeholder="Tenant phone">
+          </div>
+        </div>`}
+      </div>`).join('')).join('');
 
   const { data: users } = await sb.from('profiles').select('*');
   $('userRows').innerHTML = (users||[]).map(u => `
@@ -504,17 +686,17 @@ document.addEventListener('click', async e => {
 
   if (t.dataset.saveflat){
     const id = t.dataset.saveflat;
-    const val = f => document.querySelector(`[data-fld="${f}"][data-flat="${id}"]`).value.trim();
+    const patch = {};
+    document.querySelectorAll(`[data-flat="${id}"]`).forEach(i => {
+      patch[i.dataset.fld] = i.value.trim() || null;
+    });
     t.disabled = true;
-    const { error } = await sb.from('flats')
-      .update({ owner_name: val('owner_name') || null, phone: val('phone') || null })
-      .eq('id', id);
+    const { error } = await sb.from('flats').update(patch).eq('id', id);
     t.disabled = false;
     if (error) return alert(error.message);
     t.textContent = 'Saved';
     setTimeout(() => { t.textContent = 'Save'; }, 1500);
-    const f = FLATS.find(x => x.id == id);
-    f.owner_name = val('owner_name'); f.phone = val('phone');
+    await refreshFlats();
     renderDirectory();
   }
 
