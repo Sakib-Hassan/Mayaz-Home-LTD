@@ -1,4 +1,4 @@
--- =====================================================================
+-- =======================================================================
 --  Migration 01 — real flat numbers, owner + tenant details, NID uploads,
 --  meter numbers, and the building master meter.
 --
