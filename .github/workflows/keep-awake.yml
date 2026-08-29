@@ -1,45 +1,102 @@
 # Keeps the Supabase project awake.
 #
-# Free Supabase projects pause after 7 days with no database activity. Residents
-# only use this app at the start and end of the month, which leaves a ~20 day
-# gap in the middle — long enough to trigger the pause. This runs a harmless
-# one-row query twice a week so the timer never runs out.
+# Free Supabase projects pause after 7 days with no database activity.
+# Residents only use this app at the start and end of the month, so without
+# this the project sleeps mid-month.
+#
+# Runs DAILY, not twice weekly: GitHub's scheduled runs are best-effort and get
+# dropped when their queue is busy, so a twice-weekly schedule has no margin
+# against a 7-day deadline. Daily means several runs can be skipped in a row
+# and the project still never sleeps.
 #
 # Put this file at:  .github/workflows/keep-awake.yml
+#
+# Needs ONE repository VARIABLE and ONE repository SECRET
+# (Settings -> Secrets and variables -> Actions):
+#
+#   Variables tab:  SUPABASE_URL   https://abcdefgh.supabase.co  (no trailing slash)
+#   Secrets tab:    SUPABASE_KEY   the publishable / anon key
+#
+# The URL is a VARIABLE, not a secret, on purpose: it is already public in
+# index.html, and as a variable it prints in the logs in plain text — so a typo
+# or a stray space is visible immediately instead of being masked as ***.
 
 name: Keep Supabase awake
 
 on:
   schedule:
-    # 03:00 UTC every Monday and Thursday (09:00 Dhaka time)
-    - cron: '0 3 * * 1,4'
-  workflow_dispatch:        # lets you run it by hand from the Actions tab
+    # 03:17 UTC daily (09:17 Dhaka). Deliberately not on the hour — on-the-hour
+    # schedules are the most heavily contended and the most often dropped.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
 
 permissions:
-  contents: write           # needed for the heartbeat commit below
+  contents: write
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Query the database
+      - name: Check the secrets are set
+        env:
+          URL: ${{ vars.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          code=$(curl -s -o /tmp/out.txt -w "%{http_code}" \
-            "${{ vars.SUPABASE_URL }}/rest/v1/flats?select=id&limit=1" \
-            -H "apikey: ${{ secrets.SUPABASE_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_KEY }}")
-          echo "HTTP $code"
-          cat /tmp/out.txt
-          if [ "$code" != "200" ]; then
-            echo "::error::Supabase did not answer with 200. The project may be paused already, or the key is wrong."
+          fail=0
+          if [ -z "$URL" ]; then
+            echo "::error::SUPABASE_URL is empty. Add it as a REPOSITORY secret under Settings -> Secrets and variables -> Actions -> Secrets tab."
+            fail=1
+          else
+            echo "SUPABASE_URL is set (${#URL} characters, starts with ${URL:0:8})"
+            case "$URL" in https://*) ;; *) echo "::error::SUPABASE_URL must start with https://"; fail=1 ;; esac
+            case "$URL" in */) echo "::error::Remove the trailing slash from SUPABASE_URL"; fail=1 ;; esac
+          fi
+          if [ -z "$KEY" ]; then
+            echo "::error::SUPABASE_KEY is empty. Same place as above."
+            fail=1
+          else
+            echo "SUPABASE_KEY is set (${#KEY} characters)"
+          fi
+          exit $fail
+
+      # THE PING. Everything after this is housekeeping — if this step passes,
+      # the project stays awake even if a later step fails.
+      - name: Query the database
+        env:
+          URL: ${{ vars.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          ok=0
+          for attempt in 1 2 3; do
+            code=$(curl -s -m 30 -o /tmp/out.txt -w "%{http_code}" \
+              "$URL/rest/v1/flats?select=id&limit=1" \
+              -H "apikey: $KEY" \
+              -H "Authorization: Bearer $KEY") || true
+            echo "attempt $attempt -> HTTP $code"
+            if [ "$code" = "200" ]; then ok=1; break; fi
+            sleep 10
+          done
+          cat /tmp/out.txt || true
+          if [ "$ok" = "1" ]; then
+            echo "Database answered. Inactivity timer reset."
+          else
+            echo "::error::Supabase never answered with 200 after 3 attempts. Check the key, or whether the project is already paused."
             exit 1
           fi
 
-      # GitHub switches off scheduled workflows in a repo that has had no commits
-      # for 60 days. This tiny commit keeps the schedule itself alive.
+      # GitHub switches off scheduled workflows in a repo with no commits for
+      # 60 days. One commit a week is enough to prevent that, and avoids 365
+      # pointless commits a year. Failures here must NOT fail the job, since
+      # the ping above has already done the important work.
       - uses: actions/checkout@v4
-      - name: Heartbeat commit
+        continue-on-error: true
+      - name: Weekly heartbeat commit
+        continue-on-error: true
         run: |
+          if [ "$(date -u +%u)" != "1" ]; then
+            echo "Not Monday — skipping the heartbeat commit."
+            exit 0
+          fi
           date -u +"%Y-%m-%dT%H:%M:%SZ" > .last-ping
           git config user.name  "keep-awake"
           git config user.email "actions@github.com"
