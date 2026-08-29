@@ -25,7 +25,7 @@ jobs:
       - name: Query the database
         run: |
           code=$(curl -s -o /tmp/out.txt -w "%{http_code}" \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/flats?select=id&limit=1" \
+            "${{ vars.SUPABASE_URL }}/rest/v1/flats?select=id&limit=1" \
             -H "apikey: ${{ secrets.SUPABASE_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_KEY }}")
           echo "HTTP $code"
