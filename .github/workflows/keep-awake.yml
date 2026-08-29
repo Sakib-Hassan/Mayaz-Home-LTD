@@ -20,19 +20,19 @@
 # The URL is a VARIABLE, not a secret, on purpose: it is already public in
 # index.html, and as a variable it prints in the logs in plain text — so a typo
 # or a stray space is visible immediately instead of being masked as ***.
-
+ 
 name: Keep Supabase awake
-
+ 
 on:
   schedule:
     # 03:17 UTC daily (09:17 Dhaka). Deliberately not on the hour — on-the-hour
     # schedules are the most heavily contended and the most often dropped.
     - cron: '17 3 * * *'
   workflow_dispatch:
-
+ 
 permissions:
   contents: write
-
+ 
 jobs:
   ping:
     runs-on: ubuntu-latest
@@ -58,7 +58,7 @@ jobs:
             echo "SUPABASE_KEY is set (${#KEY} characters)"
           fi
           exit $fail
-
+ 
       # THE PING. Everything after this is housekeeping — if this step passes,
       # the project stays awake even if a later step fails.
       - name: Query the database
@@ -83,7 +83,7 @@ jobs:
             echo "::error::Supabase never answered with 200 after 3 attempts. Check the key, or whether the project is already paused."
             exit 1
           fi
-
+ 
       # GitHub switches off scheduled workflows in a repo with no commits for
       # 60 days. One commit a week is enough to prevent that, and avoids 365
       # pointless commits a year. Failures here must NOT fail the job, since
@@ -103,3 +103,4 @@ jobs:
           git add .last-ping
           git diff --staged --quiet || git commit -m "keep-awake ping"
           git push
+ 
