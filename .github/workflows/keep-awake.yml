@@ -88,7 +88,7 @@ jobs:
       # 60 days. One commit a week is enough to prevent that, and avoids 365
       # pointless commits a year. Failures here must NOT fail the job, since
       # the ping above has already done the important work.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         continue-on-error: true
       - name: Weekly heartbeat commit
         continue-on-error: true
