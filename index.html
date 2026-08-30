@@ -6,151 +6,398 @@
 <title>Building Register</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
 <style>
+/* ===== tokens ===================================================== */
 :root{
-  --paper:#efeee8; --surface:#fff; --ink:#1b2a26; --muted:#6b7370;
-  --line:#dddbd2; --accent:#145c4e; --accent-soft:#e4ece9;
-  --paid:#1c7a5a; --pending:#a3690f; --due:#9c2f2f; --idle:#8d938f;
-  --sans:'IBM Plex Sans',system-ui,sans-serif;
+  --paper:#efeee8; --surface:#fff; --sunk:#f7f6f2;
+  --ink:#1b2a26; --ink-2:#41504b; --muted:#6b7370; --faint:#98a09c;
+  --line:#dddbd2; --line-2:#eceae3;
+  --accent:#145c4e; --accent-hi:#1a7263; --accent-soft:#e4ece9;
+  --ok:#1c7a5a; --ok-bg:#eef7f2; --ok-line:#bfded1;
+  --warn:#a3690f; --warn-bg:#fdf6ea; --warn-line:#e8d5ae;
+  --bad:#9c2f2f; --bad-bg:#fdf1f0; --bad-line:#eecfcd;
+  --idle:#8d938f; --idle-bg:#f2f2ef;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
   --cond:'IBM Plex Sans Condensed',var(--sans);
   --mono:'IBM Plex Mono',ui-monospace,monospace;
-  --r:4px;
+  --r:5px; --r-lg:8px;
+  --sh:0 1px 2px rgba(27,42,38,.06);
+  --sh-lg:0 8px 30px rgba(27,42,38,.16);
+  --sp:16px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{background:var(--paper);color:var(--ink);font:400 15px/1.5 var(--sans);-webkit-text-size-adjust:100%}
-h1,h2,h3{font-family:var(--cond);font-weight:600;letter-spacing:.01em;margin:0}
+body{background:var(--paper);color:var(--ink);font:400 15px/1.55 var(--sans);
+     -webkit-text-size-adjust:100%;overflow-wrap:break-word}
+h1,h2,h3{font-family:var(--cond);font-weight:600;letter-spacing:.005em;margin:0}
 a{color:var(--accent)}
-button{font:inherit;cursor:pointer}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit;cursor:pointer;color:inherit}
 .hidden{display:none !important}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;border:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
 
-.btn{background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:var(--r);
-     padding:9px 16px;font-weight:500;font-size:14px}
-.btn:hover{filter:brightness(1.12)}
-.btn[disabled]{opacity:.5;cursor:not-allowed;filter:none}
+/* ===== buttons ==================================================== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  background:var(--accent);color:#fff;border:1px solid var(--accent);
+  border-radius:var(--r);padding:9px 15px;font-weight:500;font-size:14px;
+  line-height:1.2;transition:background .12s,border-color .12s,opacity .12s}
+.btn:hover:not(:disabled){background:var(--accent-hi);border-color:var(--accent-hi)}
+.btn:active:not(:disabled){transform:translateY(.5px)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
-.btn.ghost:hover{background:#fff;filter:none}
+.btn.ghost:hover:not(:disabled){background:var(--sunk);border-color:var(--muted)}
+.btn.quiet{background:transparent;border-color:transparent;color:var(--accent);padding:6px 8px}
+.btn.quiet:hover:not(:disabled){background:var(--accent-soft)}
+.btn.danger{background:var(--bad);border-color:var(--bad)}
+.btn.danger:hover:not(:disabled){background:#87292a;border-color:#87292a}
 .btn.sm{padding:5px 11px;font-size:13px}
-input,select{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r);
-     background:#fff;color:var(--ink);width:100%}
-label{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
-     color:var(--muted);margin-bottom:5px;font-weight:500}
-.field{margin-bottom:14px}
+.btn.wide{width:100%}
+.btn .spin{width:13px;height:13px;border:2px solid rgba(255,255,255,.35);
+  border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.btn.ghost .spin{border-color:rgba(27,42,38,.2);border-top-color:var(--ink)}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-#login{min-height:100dvh;display:grid;place-items:center;padding:22px}
-.loginbox{width:100%;max-width:380px}
-.plate{background:var(--ink);color:#f2f4f2;border-radius:var(--r);padding:22px 24px;margin-bottom:-1px}
-.plate h1{font-size:26px;color:#fff}
-.plate p{margin:6px 0 0;font-size:13px;color:#9fb0aa;font-family:var(--mono)}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px 24px}
-.note{font-size:13px;color:var(--muted);margin-top:14px;line-height:1.5}
-.msg{font-size:13.5px;padding:10px 12px;border-radius:var(--r);margin-bottom:14px}
-.msg.err{background:#fbeceb;color:var(--due);border:1px solid #f0d2d0}
-.msg.ok{background:var(--accent-soft);color:var(--accent);border:1px solid #cfe0da}
+/* ===== forms ====================================================== */
+.field{margin-bottom:14px;min-width:0}
+label,.lbl{display:block;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:5px;font-weight:500}
+input,select,textarea{font:inherit;padding:9px 11px;border:1px solid var(--line);
+  border-radius:var(--r);background:#fff;color:var(--ink);width:100%;min-width:0}
+input:hover,select:hover{border-color:var(--muted)}
+input[aria-invalid=true]{border-color:var(--bad);background:var(--bad-bg)}
+.help{font-size:12.5px;color:var(--muted);margin-top:5px}
+.err{font-size:12.5px;color:var(--bad);margin-top:5px;font-weight:500}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.inline{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 
-header{background:var(--ink);color:#fff;padding:14px 20px;display:flex;
-       align-items:center;gap:14px;flex-wrap:wrap}
-header h1{font-size:19px}
-header .who{margin-left:auto;font-family:var(--mono);font-size:12px;color:#9fb0aa;text-align:right}
-nav{background:var(--surface);border-bottom:1px solid var(--line);display:flex;gap:2px;
-    padding:0 12px;overflow-x:auto;position:sticky;top:0;z-index:5}
-nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);
-    padding:13px 12px;font-weight:500;white-space:nowrap;font-size:14px}
-nav button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
-main{max-width:960px;margin:0 auto;padding:22px 16px 64px}
-section>h2{font-size:20px;margin-bottom:4px}
-.sub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
-.block{margin-bottom:34px}
+/* toggle switch */
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;
+  padding:11px 13px;border:1px solid var(--line);border-radius:var(--r);background:var(--sunk)}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.track{width:38px;height:21px;border-radius:99px;background:#c9cdc8;position:relative;
+  transition:background .15s;flex:none}
+.track::after{content:'';position:absolute;top:2.5px;left:2.5px;width:16px;height:16px;
+  border-radius:50%;background:#fff;transition:transform .15s;box-shadow:var(--sh)}
+.switch input:checked + .track{background:var(--accent)}
+.switch input:checked + .track::after{transform:translateX(17px)}
+.switch input:focus-visible + .track{outline:2px solid var(--accent);outline-offset:2px}
+.switch .txt{font-size:14px;font-weight:450}
 
-.blockhead{font-family:var(--cond);font-size:13px;font-weight:600;letter-spacing:.12em;
-    text-transform:uppercase;color:var(--muted);margin:22px 0 8px;
-    padding-bottom:6px;border-bottom:1px solid var(--line)}
-.blockhead:first-child{margin-top:0}
+/* file picker card */
+.filecard{border:1px dashed var(--line);border-radius:var(--r);padding:13px;background:var(--sunk)}
+.filecard.has{border-style:solid;background:#fff}
+.filecard .meta{font-size:12.5px;color:var(--muted);margin-top:6px}
+.filecard .chosen{display:flex;gap:10px;align-items:center;margin-top:9px;
+  font-size:13.5px;padding:8px 10px;background:var(--accent-soft);border-radius:var(--r)}
+.filecard .chosen .fn{font-family:var(--mono);font-size:12.5px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;flex:1}
+.thumb{width:44px;height:44px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
 
-.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+/* ===== status pills ============================================== */
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;
+  padding:3px 9px 3px 7px;border-radius:99px;border:1px solid var(--line);
+  color:var(--muted);background:var(--sunk);white-space:nowrap;line-height:1.5}
+.pill .ic{font-size:11px;line-height:1}
+.pill.verified {color:var(--ok);  background:var(--ok-bg);  border-color:var(--ok-line)}
+.pill.submitted{color:var(--warn);background:var(--warn-bg);border-color:var(--warn-line)}
+.pill.unpaid   {color:var(--bad); background:var(--bad-bg); border-color:var(--bad-line)}
+.pill.rejected {color:var(--bad); background:#fff;          border-color:var(--bad);border-style:dashed}
+.pill.none     {color:var(--muted);background:var(--idle-bg);border-color:var(--line)}
+
+/* ===== shell ===================================================== */
+header{background:var(--ink);color:#fff;padding:12px 18px;display:flex;
+  align-items:center;gap:14px}
+header .brand{display:flex;align-items:center;gap:10px;min-width:0}
+header .mark{width:26px;height:26px;flex:none}
+header h1{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .sync{margin-left:auto;font-size:11.5px;color:#9fb0aa;font-family:var(--mono);
+  display:flex;align-items:center;gap:9px}
+header .userbtn{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.14);border-radius:99px;padding:5px 12px 5px 6px;color:#fff}
+header .userbtn:hover{background:rgba(255,255,255,.13)}
+.avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);
+  display:grid;place-items:center;font-size:11px;font-weight:600;font-family:var(--mono);flex:none}
+.userbtn .un{font-size:12.5px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+nav{background:var(--surface);border-bottom:1px solid var(--line);display:flex;gap:4px;
+  padding:7px 12px;overflow-x:auto;position:sticky;top:0;z-index:20;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:1px solid transparent;color:var(--muted);
+  padding:8px 13px;font-weight:500;white-space:nowrap;font-size:14px;border-radius:99px;
+  display:flex;align-items:center;gap:7px;transition:background .12s,color .12s}
+nav button:hover{color:var(--ink);background:var(--sunk)}
+nav button[aria-selected=true]{color:#fff;background:var(--accent);border-color:var(--accent)}
+nav .count{font-size:11px;font-family:var(--mono);background:var(--warn);color:#fff;
+  border-radius:99px;padding:1px 6px;line-height:1.6}
+nav button[aria-selected=true] .count{background:rgba(255,255,255,.25)}
+
+main{max-width:1020px;margin:0 auto;padding:22px 16px 80px}
+.pagehead{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.pagehead h2{font-size:22px}
+.pagehead .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.sub{color:var(--muted);font-size:13.5px;margin:0 0 18px;max-width:62ch}
+.block{margin-bottom:32px}
+.block > h3{font-size:17px;margin-bottom:3px}
+.narrow{max-width:620px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:18px;box-shadow:var(--sh)}
+.panel + .panel{margin-top:12px}
+.sectionhead{font-family:var(--cond);font-size:12.5px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);margin:20px 0 9px;
+  display:flex;align-items:center;gap:9px}
+.sectionhead::after{content:'';flex:1;height:1px;background:var(--line)}
+
+/* ===== metrics =================================================== */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.metric{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line);
+  border-radius:var(--r-lg);padding:13px 15px;text-align:left;display:block;box-shadow:var(--sh)}
+button.metric{cursor:pointer;transition:border-color .12s,background .12s}
+button.metric:hover{background:var(--sunk)}
+button.metric[aria-pressed=true]{border-color:var(--ink);background:var(--sunk)}
+.metric b{display:block;font-family:var(--mono);font-size:25px;font-weight:600;line-height:1.15}
+.metric .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+  margin-top:3px;font-weight:500}
+.metric .d{font-size:12px;color:var(--faint);margin-top:4px}
+.metric.ok  {border-left-color:var(--ok)}
+.metric.warn{border-left-color:var(--warn)}
+.metric.bad {border-left-color:var(--bad)}
+.metric.neutral{border-left-color:var(--accent)}
+
+.progress{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:14px 16px;margin-bottom:16px;box-shadow:var(--sh)}
+.progress .top{display:flex;justify-content:space-between;gap:12px;margin-bottom:9px;
+  font-size:13.5px;flex-wrap:wrap}
+.progress .top b{font-family:var(--mono)}
+.bar{height:9px;border-radius:99px;background:var(--idle-bg);overflow:hidden;display:flex}
+.bar i{display:block;height:100%;transition:width .35s ease}
+.bar .b-ok{background:var(--ok)} .bar .b-warn{background:var(--warn)} .bar .b-bad{background:var(--bad-line)}
+
+/* ===== filter toolbar ============================================ */
+.toolbar{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:13px 14px}
+.toolbar .field{margin:0}
+.toolbar .grow{flex:1;min-width:150px}
+.toolbar .w-sm{width:126px}
+.chipset{display:flex;gap:6px;flex-wrap:wrap}
+.chipbtn{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 12px;
+  font-size:13px;color:var(--ink-2);white-space:nowrap}
+.chipbtn:hover{border-color:var(--muted)}
+.chipbtn[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.filternote{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:10px;
+  margin:-4px 0 12px;flex-wrap:wrap}
+
+/* ===== board tiles =============================================== */
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:9px}
 .tile{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--idle);
-      border-radius:var(--r);padding:10px 11px;text-align:left}
-.tile b{display:block;font-family:var(--mono);font-size:15px;font-weight:600}
-.tile span{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tile.verified{border-left-color:var(--paid)}
-.tile.submitted{border-left-color:var(--pending)}
-.tile.unpaid,.tile.none{border-left-color:var(--due)}
-.tile.rejected{border-left-color:var(--due);background:#fdf6f5}
-.tile.me{box-shadow:inset 0 0 0 1px var(--accent)}
+  border-radius:var(--r);padding:10px 11px;text-align:left;display:block;width:100%;
+  transition:box-shadow .12s,transform .12s,border-color .12s}
+.tile:hover{box-shadow:var(--sh-lg);transform:translateY(-1px)}
+.tile:active{transform:translateY(0)}
+.tile b{display:block;font-family:var(--mono);font-size:16px;font-weight:600}
+.tile .st{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted);margin-top:5px}
+.tile .amt{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:3px}
+.tile.verified {border-left-color:var(--ok)}
+.tile.submitted{border-left-color:var(--warn)}
+.tile.unpaid   {border-left-color:var(--bad)}
+.tile.rejected {border-left-color:var(--bad);background:var(--bad-bg)}
+.tile.none     {border-left-color:var(--idle)}
+.tile .you{display:inline-block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--accent);color:#fff;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:2px}
 
-.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:14px 0 0}
-.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
-.tally{display:flex;gap:26px;flex-wrap:wrap;margin:0 0 16px;padding:14px 16px;
-       background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
-.tally div b{display:block;font-family:var(--mono);font-size:22px;font-weight:600}
-.tally div span{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-
-.rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-.row{display:flex;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);
-     flex-wrap:wrap}
+/* ===== lists / records =========================================== */
+.rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.row{display:flex;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line-2)}
 .row:first-child{border-top:0}
-.row .no{font-family:var(--mono);font-weight:600;min-width:66px}
-.row .nm{flex:1;min-width:120px}
-.row .nm small{display:block;color:var(--muted);font-size:12px}
-.row .tel{font-family:var(--mono);font-size:14px;text-decoration:none}
+.row:hover{background:var(--sunk)}
+.row .no{font-family:var(--mono);font-weight:600;min-width:52px;font-size:15px}
+.row .nm{flex:1;min-width:0}
+.row .nm b{font-weight:500}
+.row .nm small{display:block;color:var(--muted);font-size:12.5px}
+.tel{font-family:var(--mono);font-size:14px;text-decoration:none;white-space:nowrap}
+.none-txt{color:var(--faint);font-style:italic}
 
-/* flat card in the directory */
-.flatcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
-    padding:12px 14px;margin-bottom:8px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
-.flatcard .fno{font-family:var(--mono);font-size:17px;font-weight:600;min-width:52px}
-.flatcard .parties{flex:1;min-width:210px;display:flex;gap:22px;flex-wrap:wrap}
-.party{min-width:180px}
-.party .tag{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
-    font-weight:500;margin-bottom:2px}
-.party .pn{font-weight:500}
-.party .none{color:var(--muted);font-style:italic;font-weight:400}
-.meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:right;min-width:96px}
+.flatcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:13px 15px;margin-bottom:8px;display:flex;gap:16px;align-items:flex-start;box-shadow:var(--sh)}
+.flatcard .fno{font-family:var(--mono);font-size:18px;font-weight:600;min-width:46px;padding-top:1px}
+.flatcard .parties{flex:1;min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.party .tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+  font-weight:600;margin-bottom:2px}
+.party .pn{font-weight:500;margin-bottom:1px}
+.flatcard .side{min-width:104px;text-align:right;font-size:12px;color:var(--muted);
+  display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.mono-sm{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.badge{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);
+  background:var(--sunk);color:var(--ink-2);white-space:nowrap}
+.badge.rented{background:var(--accent-soft);border-color:var(--ok-line);color:var(--accent)}
 
-.bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
-.bar .field{margin:0;min-width:130px}
-.empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:14px;
-       background:var(--surface);border:1px dashed var(--line);border-radius:var(--r)}
-.split{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.chip{font-family:var(--mono);font-size:11.5px;padding:3px 8px;border-radius:999px;
-      border:1px solid var(--line);color:var(--muted);white-space:nowrap}
-.chip.verified{color:var(--paid);border-color:#bfded1;background:#f0f8f4}
-.chip.submitted{color:var(--pending);border-color:#e8d5ae;background:#fdf6ea}
-.chip.unpaid,.chip.none{color:var(--due);border-color:#eecfcd;background:#fdf1f0}
-.amt{font-family:var(--mono);font-weight:500}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
-.legalnote{font-size:12.5px;color:var(--muted);border-left:2px solid var(--line);
-    padding-left:12px;margin:14px 0 0;line-height:1.5}
-@media (max-width:560px){
-  main{padding:18px 12px 60px}
-  .two{grid-template-columns:1fr}
-  .meta{text-align:left}
+.accordion{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  margin-bottom:9px;overflow:hidden}
+.accordion > .head{display:flex;align-items:center;gap:11px;width:100%;padding:13px 15px;
+  background:none;border:0;text-align:left;font-family:var(--cond);font-weight:600;font-size:15px}
+.accordion > .head:hover{background:var(--sunk)}
+.accordion > .head .arrow{transition:transform .15s;color:var(--muted);font-size:12px}
+.accordion[open] > .head .arrow{transform:rotate(90deg)}
+.accordion .body{border-top:1px solid var(--line-2);padding:6px 0}
+
+/* ===== empty / skeleton / banner ================================= */
+.empty{padding:30px 20px;text-align:center;color:var(--muted);font-size:14px;
+  background:var(--surface);border:1px dashed var(--line);border-radius:var(--r-lg)}
+.empty .big{display:block;font-size:26px;margin-bottom:8px;opacity:.4}
+.empty .t{color:var(--ink);font-weight:500;margin-bottom:4px}
+.skel{background:linear-gradient(90deg,var(--line-2) 25%,#f4f3ef 50%,var(--line-2) 75%);
+  background-size:200% 100%;animation:sk 1.3s infinite;border-radius:var(--r)}
+@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skelrow{height:52px;margin-bottom:8px}
+.skeltile{height:66px}
+
+.msg{font-size:13.5px;padding:11px 13px;border-radius:var(--r);margin-bottom:14px;
+  display:flex;gap:10px;align-items:flex-start}
+.msg .ic{flex:none;font-weight:700}
+.msg.err{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad-line)}
+.msg.ok{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-line)}
+.msg.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-line)}
+.msg.info{background:var(--sunk);color:var(--ink-2);border:1px solid var(--line)}
+.msg .act{margin-left:auto;flex:none}
+.privacy{font-size:12.5px;color:var(--muted);border-left:2px solid var(--line);
+  padding-left:12px;margin:14px 0 0;line-height:1.5}
+
+/* ===== toast ===================================================== */
+#toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:120;
+  display:flex;flex-direction:column;gap:8px;width:min(430px,calc(100vw - 28px));pointer-events:none}
+.toast{background:var(--ink);color:#fff;border-radius:var(--r);padding:12px 15px;font-size:14px;
+  box-shadow:var(--sh-lg);display:flex;gap:10px;align-items:center;pointer-events:auto;
+  animation:tin .22s ease}
+.toast.ok .dot{color:#7fd8b4} .toast.err .dot{color:#f2a6a2}
+@keyframes tin{from{opacity:0;transform:translateY(10px)}}
+
+/* ===== dialog / drawer =========================================== */
+.backdrop{position:fixed;inset:0;background:rgba(20,30,27,.44);z-index:100;
+  display:flex;animation:fade .16s ease}
+@keyframes fade{from{opacity:0}}
+.backdrop.center{align-items:center;justify-content:center;padding:18px}
+.backdrop.right{justify-content:flex-end}
+.dialog{background:var(--surface);border-radius:var(--r-lg);width:min(480px,100%);
+  max-height:88vh;overflow:auto;box-shadow:var(--sh-lg);animation:pop .18s ease}
+@keyframes pop{from{opacity:0;transform:scale(.97)}}
+.drawer{background:var(--surface);width:min(560px,100%);height:100%;overflow:auto;
+  box-shadow:var(--sh-lg);animation:slide .2s ease}
+@keyframes slide{from{transform:translateX(24px);opacity:.6}}
+.dhead{display:flex;align-items:flex-start;gap:12px;padding:17px 19px;
+  border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2}
+.dhead h3{font-size:18px}
+.dhead .x{margin-left:auto;background:none;border:0;font-size:20px;color:var(--muted);
+  line-height:1;padding:2px 6px;border-radius:var(--r)}
+.dhead .x:hover{background:var(--sunk);color:var(--ink)}
+.dbody{padding:19px}
+.dfoot{padding:15px 19px;border-top:1px solid var(--line);display:flex;gap:9px;
+  justify-content:flex-end;position:sticky;bottom:0;background:var(--surface);flex-wrap:wrap}
+.dfoot .left{margin-right:auto;display:flex;gap:9px}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:14px;margin-bottom:4px}
+.kv dt{color:var(--muted);font-size:12.5px}
+.kv dd{margin:0;font-weight:450}
+.timeline{list-style:none;margin:10px 0 0;padding:0;font-size:13px}
+.timeline li{padding:8px 0 8px 16px;border-left:2px solid var(--line);position:relative}
+.timeline li::before{content:'';position:absolute;left:-5px;top:14px;width:8px;height:8px;
+  border-radius:50%;background:var(--line);border:2px solid var(--surface)}
+.timeline .when{color:var(--faint);font-size:11.5px;font-family:var(--mono)}
+.preview{width:100%;border:1px solid var(--line);border-radius:var(--r);background:var(--sunk);
+  min-height:260px;max-height:56vh}
+img.preview{object-fit:contain;display:block}
+
+/* ===== login ===================================================== */
+#login{min-height:100dvh;display:grid;place-items:center;padding:20px;
+  background:
+    radial-gradient(circle at 22% 12%, rgba(20,92,78,.06), transparent 55%),
+    repeating-linear-gradient(0deg,transparent 0 27px,rgba(27,42,38,.035) 27px 28px),
+    repeating-linear-gradient(90deg,transparent 0 27px,rgba(27,42,38,.035) 27px 28px),
+    var(--paper)}
+.loginbox{width:100%;max-width:392px}
+.plate{background:var(--ink);color:#f2f4f2;border-radius:var(--r-lg) var(--r-lg) 0 0;
+  padding:22px 24px;display:flex;gap:13px;align-items:center}
+.plate h1{font-size:23px;color:#fff;line-height:1.15}
+.plate p{margin:4px 0 0;font-size:12px;color:#9fb0aa;font-family:var(--mono);letter-spacing:.03em}
+.card{background:var(--surface);border:1px solid var(--line);border-top:0;
+  border-radius:0 0 var(--r-lg) var(--r-lg);padding:22px 24px;box-shadow:var(--sh)}
+.pw{position:relative}
+.pw input{padding-right:66px}
+.pw button{position:absolute;right:5px;top:5px;bottom:5px;background:none;border:0;
+  font-size:12px;color:var(--accent);padding:0 10px;border-radius:4px;font-weight:500}
+.pw button:hover{background:var(--accent-soft)}
+.note{font-size:12.5px;color:var(--muted);margin-top:15px;line-height:1.55}
+#boot{min-height:100dvh;display:grid;place-items:center;gap:14px;color:var(--muted);font-size:14px}
+.bootspin{width:26px;height:26px;border:2.5px solid var(--line);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+
+/* ===== responsive ================================================ */
+@media (max-width:900px){
+  .flatcard .parties{grid-template-columns:1fr;gap:10px}
+}
+@media (max-width:620px){
+  main{padding:16px 12px 76px}
+  .row2{grid-template-columns:1fr}
+  header{padding:10px 13px;gap:10px}
+  header .sync .txt{display:none}
+  .userbtn .un{display:none}
+  .flatcard{flex-wrap:wrap;gap:10px}
+  .flatcard .side{min-width:0;text-align:left;align-items:flex-start;
+    flex-direction:row;gap:8px;width:100%;flex-wrap:wrap}
+  .toolbar{padding:11px}
+  .toolbar .w-sm{width:100%}
+  .board{grid-template-columns:repeat(auto-fill,minmax(97px,1fr))}
+  .metrics{grid-template-columns:1fr 1fr}
+  .dfoot{flex-direction:column-reverse}
+  .dfoot .btn{width:100%}
+  .dfoot .left{margin-right:0;width:100%;flex-direction:column-reverse}
+  .dfoot .left .btn{width:100%}
+  .backdrop.center{padding:0;align-items:flex-end}
+  .dialog{border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}
 }
 </style>
 </head>
 <body>
 
+<div id="boot"><div><div class="bootspin"></div>Loading the register…</div></div>
+
 <!-- ==================== LOGIN ==================== -->
-<div id="login">
+<div id="login" class="hidden">
   <div class="loginbox">
     <div class="plate">
-      <h1 id="bldgName">Building Register</h1>
-      <p>30 flats · A B C D</p>
+      <svg class="mark" width="34" height="34" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect x="4" y="7" width="24" height="21" rx="1.5" stroke="#7fd8b4" stroke-width="1.6"/>
+        <path d="M4 12h24M12 7v21M20 7v21" stroke="#7fd8b4" stroke-width="1.2" opacity=".55"/>
+        <rect x="14.5" y="21" width="3" height="7" fill="#7fd8b4" opacity=".8"/>
+        <path d="M16 2.5 29 7H3z" fill="#7fd8b4"/>
+      </svg>
+      <div>
+        <h1 id="bldgName">Building Register</h1>
+        <p id="bldgSub">30 flats · A B C D</p>
+      </div>
     </div>
     <div class="card">
-      <div id="loginMsg"></div>
+      <div id="loginMsg" role="alert"></div>
       <div class="field">
         <label for="email">Email</label>
-        <input id="email" type="email" autocomplete="username" placeholder="1a@building.local">
+        <input id="email" type="email" autocomplete="username" inputmode="email"
+               autocapitalize="none" spellcheck="false" placeholder="1a@building.local">
+        <div class="err hidden" id="emailErr"></div>
       </div>
       <div class="field">
         <label for="pass">Password</label>
-        <input id="pass" type="password" autocomplete="current-password">
+        <div class="pw">
+          <input id="pass" type="password" autocomplete="current-password">
+          <button type="button" id="pwToggle" aria-label="Show password">Show</button>
+        </div>
       </div>
-      <button class="btn" id="signIn" style="width:100%">Sign in</button>
-      <p class="note">Accounts are created by the building committee. Lost your password? Ask the committee to reset it.</p>
+      <button class="btn wide" id="signIn">Sign in</button>
+      <p class="note">Accounts are created by the building committee.
+        <button class="btn quiet sm" id="needAccess" style="padding:0;font-size:12.5px">Need access?</button></p>
     </div>
   </div>
 </div>
@@ -158,156 +405,310 @@ section>h2{font-size:20px;margin-bottom:4px}
 <!-- ==================== APP ==================== -->
 <div id="app" class="hidden">
   <header>
-    <h1 id="hdrName">Building Register</h1>
-    <div class="who"><span id="whoName"></span><br><span id="whoFlat"></span></div>
-    <button class="btn ghost sm" id="signOut" style="color:#fff;border-color:#3c4f4a">Sign out</button>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect x="4" y="7" width="24" height="21" rx="1.5" stroke="#7fd8b4" stroke-width="1.6"/>
+        <path d="M4 12h24M12 7v21M20 7v21" stroke="#7fd8b4" stroke-width="1.2" opacity=".55"/>
+        <rect x="14.5" y="21" width="3" height="7" fill="#7fd8b4" opacity=".8"/>
+        <path d="M16 2.5 29 7H3z" fill="#7fd8b4"/>
+      </svg>
+      <h1 id="hdrName">Building Register</h1>
+    </div>
+    <div class="sync">
+      <span class="txt" id="syncTxt">—</span>
+      <button class="btn ghost sm" id="refreshBtn" style="color:#fff;border-color:#3c4f4a"
+              aria-label="Refresh data">↻</button>
+      <button class="userbtn" id="userBtn" aria-haspopup="dialog">
+        <span class="avatar" id="avatar">··</span>
+        <span class="un" id="whoName"></span>
+      </button>
+    </div>
   </header>
 
-  <nav id="tabs">
-    <button data-view="board"     aria-selected="true">Bill board</button>
-    <button data-view="directory" aria-selected="false">Phone index</button>
-    <button data-view="mine"      aria-selected="false">My flat</button>
-    <button data-view="admin"     aria-selected="false" class="hidden">Committee</button>
+  <nav id="tabs" role="tablist" aria-label="Sections">
+    <button data-view="board"     role="tab" aria-selected="true">Bill board</button>
+    <button data-view="directory" role="tab" aria-selected="false">Phone index</button>
+    <button data-view="mine"      role="tab" aria-selected="false">My flat</button>
+    <button data-view="admin"     role="tab" aria-selected="false" class="hidden">
+      Committee <span class="count hidden" id="navCount">0</span></button>
   </nav>
 
   <main>
     <!-- ---------- BOARD ---------- -->
-    <section id="view-board">
-      <h2>Bill board</h2>
-      <p class="sub">Every meter in the building, and where its bill stands this month.</p>
-      <div class="bar">
-        <div class="field">
+    <section id="view-board" role="tabpanel">
+      <div class="pagehead">
+        <div>
+          <h2>Bill board</h2>
+          <p class="sub" id="boardSub">Every meter in the building, and where its bill stands.</p>
+        </div>
+        <div class="acts">
+          <button class="btn ghost sm" id="copySummary">Copy summary</button>
+          <button class="btn sm hidden" id="jumpQueue">Review uploads</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="field w-sm">
           <label for="period">Month</label>
           <input id="period" type="month">
         </div>
+        <div class="field grow">
+          <label for="boardSearch">Find a flat</label>
+          <input id="boardSearch" type="search" placeholder="e.g. 3B" autocomplete="off">
+        </div>
+        <div class="field">
+          <span class="lbl">Block</span>
+          <div class="chipset" id="blockFilter" role="group" aria-label="Filter by block"></div>
+        </div>
       </div>
-      <div class="tally" id="tally"></div>
-      <div id="board"></div>
-      <div class="legend">
-        <span><i style="background:var(--paid)"></i>Verified by committee</span>
-        <span><i style="background:var(--pending)"></i>Copy uploaded, awaiting check</span>
-        <span><i style="background:var(--due)"></i>Not paid yet</span>
+
+      <div class="filternote">
+        <label class="inline" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink-2)">
+          <input type="checkbox" id="onlyMine" style="width:auto"> Only my flat</label>
+        <label class="inline" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink-2)">
+          <input type="checkbox" id="showCommon" checked style="width:auto"> Show common areas</label>
+        <button class="btn quiet sm hidden" id="clearFilters">Clear filters</button>
       </div>
+
+      <div id="progressWrap"></div>
+      <div class="metrics" id="metrics"></div>
+      <div id="board" aria-live="polite"></div>
+      <p class="privacy">Colour is paired with a label on every tile, so the board stays readable
+        without relying on colour alone.</p>
     </section>
 
     <!-- ---------- DIRECTORY ---------- -->
-    <section id="view-directory" class="hidden">
+    <section id="view-directory" class="hidden" role="tabpanel">
+      <div class="pagehead">
+        <div><h2>Phone index</h2>
+        <p class="sub">Guards, services and every flat in the building.</p></div>
+      </div>
+
       <div class="block">
-        <h2>Guards and services</h2>
-        <p class="sub">Tap a number to call.</p>
+        <h3>Guards and services</h3>
+        <p class="sub">Tap a number to call it.</p>
         <div class="rows" id="contactRows"></div>
       </div>
+
       <div class="block">
-        <h2>Flats</h2>
-        <p class="sub">Owner and tenant for all 30 flats, block by block.</p>
+        <h3>Flats</h3>
+        <div class="toolbar" style="margin-top:12px">
+          <div class="field grow">
+            <label for="dirSearch">Search</label>
+            <input id="dirSearch" type="search" placeholder="Flat, name or phone" autocomplete="off">
+          </div>
+          <div class="field">
+            <span class="lbl">Block</span>
+            <div class="chipset" id="dirBlockFilter" role="group" aria-label="Filter by block"></div>
+          </div>
+          <div class="field">
+            <span class="lbl">Occupancy</span>
+            <div class="chipset" role="group" aria-label="Filter by occupancy">
+              <button class="chipbtn" data-occ="all" aria-pressed="true">All</button>
+              <button class="chipbtn" data-occ="owner" aria-pressed="false">Owner</button>
+              <button class="chipbtn" data-occ="rented" aria-pressed="false">Rented</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="lbl">View</span>
+            <div class="chipset" role="group" aria-label="Display mode">
+              <button class="chipbtn" data-mode="cards" aria-pressed="true">Cards</button>
+              <button class="chipbtn" data-mode="list" aria-pressed="false">Compact</button>
+            </div>
+          </div>
+        </div>
         <div id="flatCards"></div>
+        <p class="privacy">Names, phone numbers and occupancy are visible to every resident.
+          Identification documents are not — only the flat itself and the committee can open them.</p>
       </div>
     </section>
 
     <!-- ---------- MY FLAT ---------- -->
-    <section id="view-mine" class="hidden">
-      <h2 id="mineTitle">My flat</h2>
-      <p class="sub">Keep your own details up to date, and upload each month's paid bill.</p>
-      <div id="mineMsg"></div>
+    <section id="view-mine" class="hidden" role="tabpanel">
+      <div class="pagehead">
+        <div><h2 id="mineTitle">My flat</h2>
+        <p class="sub" id="mineSub">Keep your details current and upload each month's paid bill.</p></div>
+      </div>
+      <div id="mineAlert"></div>
 
-      <div class="block" id="mineDetails">
-        <h2 style="font-size:17px;margin-bottom:10px">Flat details</h2>
-        <div class="card">
-          <div class="two">
-            <div class="field"><label for="dOwnerName">Owner name</label>
-              <input id="dOwnerName" placeholder="Full name"></div>
-            <div class="field"><label for="dOwnerPhone">Owner phone</label>
-              <input id="dOwnerPhone" placeholder="01XXXXXXXXX"></div>
+      <div class="block narrow" id="mineDetails">
+        <h3>Flat details</h3>
+        <p class="sub" id="completion"></p>
+        <div class="panel">
+          <div class="sectionhead" style="margin-top:0">Owner</div>
+          <div class="row2">
+            <div class="field"><label for="dOwnerName">Full name</label>
+              <input id="dOwnerName" placeholder="Name as on the deed"></div>
+            <div class="field"><label for="dOwnerPhone">Phone</label>
+              <input id="dOwnerPhone" type="tel" inputmode="tel" placeholder="01XXXXXXXXX">
+              <div class="err hidden" data-err="dOwnerPhone"></div></div>
           </div>
-          <div class="field">
-            <label for="dOwnerNid">Owner identification (NID)</label>
-            <div class="split">
-              <input id="dOwnerNid" type="file" accept="image/*,application/pdf" style="flex:1;min-width:180px">
-              <button class="btn ghost sm hidden" id="dOwnerNidView">View current</button>
+
+          <div class="sectionhead">Tenant</div>
+          <label class="switch" style="margin-bottom:13px">
+            <input type="checkbox" id="ownerOccupied">
+            <span class="track" aria-hidden="true"></span>
+            <span class="txt">This flat is owner occupied</span>
+          </label>
+          <div id="tenantFields">
+            <div class="row2">
+              <div class="field"><label for="dTenantName">Tenant name</label>
+                <input id="dTenantName" placeholder="Full name"></div>
+              <div class="field"><label for="dTenantPhone">Tenant phone</label>
+                <input id="dTenantPhone" type="tel" inputmode="tel" placeholder="01XXXXXXXXX">
+                <div class="err hidden" data-err="dTenantPhone"></div></div>
             </div>
           </div>
 
-          <div class="two" style="margin-top:8px">
-            <div class="field"><label for="dTenantName">Tenant name</label>
-              <input id="dTenantName" placeholder="Leave blank if owner occupied"></div>
-            <div class="field"><label for="dTenantPhone">Tenant phone</label>
-              <input id="dTenantPhone" placeholder="01XXXXXXXXX"></div>
-          </div>
+          <div class="sectionhead">Identification</div>
+          <p class="help" style="margin:-4px 0 12px">A photo or scan of the NID.
+            Only your flat and the committee can open these.</p>
           <div class="field">
-            <label for="dTenantNid">Tenant identification (NID)</label>
-            <div class="split">
-              <input id="dTenantNid" type="file" accept="image/*,application/pdf" style="flex:1;min-width:180px">
-              <button class="btn ghost sm hidden" id="dTenantNidView">View current</button>
+            <label for="dOwnerNid">Owner NID</label>
+            <div class="filecard" id="fc-dOwnerNid">
+              <input id="dOwnerNid" type="file" accept="image/*,application/pdf">
+              <div class="meta">JPG, PNG or PDF · up to 5 MB</div>
+              <div class="chosen hidden"></div>
             </div>
+            <button class="btn ghost sm hidden" id="dOwnerNidView" style="margin-top:8px">View stored copy</button>
+          </div>
+          <div class="field" id="tenantNidField">
+            <label for="dTenantNid">Tenant NID</label>
+            <div class="filecard" id="fc-dTenantNid">
+              <input id="dTenantNid" type="file" accept="image/*,application/pdf">
+              <div class="meta">JPG, PNG or PDF · up to 5 MB</div>
+              <div class="chosen hidden"></div>
+            </div>
+            <button class="btn ghost sm hidden" id="dTenantNidView" style="margin-top:8px">View stored copy</button>
           </div>
 
-          <button class="btn" id="dSave">Save details</button>
-          <p class="legalnote">Names and phone numbers appear in the phone index for every resident.
-            NID copies do not — only your flat and the committee can open them.</p>
+          <div class="inline" style="margin-top:6px">
+            <button class="btn" id="dSave" disabled>Saved</button>
+            <span class="help" id="dirtyNote"></span>
+          </div>
         </div>
       </div>
 
-      <div class="block">
-        <h2 style="font-size:17px;margin-bottom:10px">Upload a paid bill</h2>
-        <div class="card" id="mineUpload">
+      <div class="block narrow">
+        <h3>Upload a paid bill</h3>
+        <p class="sub">Three steps: pick the month, attach the copy, submit for review.</p>
+        <div class="panel" id="mineUpload">
+          <div id="rejectNotice"></div>
           <div class="field">
-            <label for="upPeriod">Bill month</label>
+            <label for="upPeriod">1 · Bill month</label>
             <input id="upPeriod" type="month">
+            <div class="help" id="upPeriodNote"></div>
           </div>
           <div class="field">
-            <label for="upFile">Bill copy (JPG, PNG or PDF)</label>
-            <input id="upFile" type="file" accept="image/*,application/pdf">
+            <label for="upFile">2 · Bill copy</label>
+            <div class="filecard" id="fc-upFile">
+              <input id="upFile" type="file" accept="image/*,application/pdf">
+              <div class="meta">JPG, PNG or PDF · up to 5 MB</div>
+              <div class="chosen hidden"></div>
+            </div>
           </div>
-          <button class="btn" id="upBtn">Upload bill copy</button>
+          <div id="upSummary"></div>
+          <button class="btn" id="upBtn">3 · Submit for review</button>
         </div>
       </div>
 
-      <div class="block">
-        <h2 style="font-size:17px;margin-bottom:10px">History</h2>
+      <div class="block narrow">
+        <h3>History</h3>
         <div class="rows" id="mineRows"></div>
       </div>
     </section>
 
     <!-- ---------- ADMIN ---------- -->
-    <section id="view-admin" class="hidden">
-      <div class="block">
-        <h2>Open a billing month</h2>
-        <p class="sub">Creates one bill line for each of the 30 flats. Leave the master meter figure blank to skip it.</p>
-        <div class="bar">
-          <div class="field"><label for="genPeriod">Month</label><input id="genPeriod" type="month"></div>
-          <div class="field"><label for="genAmount">Amount per flat</label><input id="genAmount" type="number" step="0.01" placeholder="3500"></div>
-          <div class="field"><label for="genCommon">Master meter</label><input id="genCommon" type="number" step="0.01" placeholder="optional"></div>
-          <button class="btn" id="genBtn">Create bills</button>
-        </div>
-        <div id="genMsg"></div>
+    <section id="view-admin" class="hidden" role="tabpanel">
+      <div class="pagehead">
+        <div><h2>Committee workspace</h2>
+        <p class="sub">What needs attention now, then the records behind it.</p></div>
       </div>
 
+      <div class="metrics" id="adminMetrics"></div>
+
       <div class="block">
-        <h2>Waiting to be checked</h2>
-        <p class="sub">Open the uploaded copy, then verify or send it back.</p>
+        <h3>Review queue</h3>
+        <p class="sub">Uploads waiting for a decision. Open one to see the copy and the flat's history.</p>
+        <div class="toolbar">
+          <div class="field grow">
+            <label for="qSearch">Search</label>
+            <input id="qSearch" type="search" placeholder="Flat number" autocomplete="off">
+          </div>
+          <div class="field w-sm">
+            <label for="qSort">Sort by</label>
+            <select id="qSort">
+              <option value="old">Oldest first</option>
+              <option value="new">Newest first</option>
+              <option value="flat">Flat number</option>
+            </select>
+          </div>
+          <div class="field w-sm">
+            <label for="qPeriod">Month</label>
+            <select id="qPeriod"><option value="">All months</option></select>
+          </div>
+        </div>
         <div class="rows" id="queueRows"></div>
       </div>
 
+      <div class="block narrow">
+        <h3>Open a billing month</h3>
+        <p class="sub">Creates one bill line per flat. You will see exactly what will happen before it does.</p>
+        <div class="panel">
+          <div class="row2">
+            <div class="field"><label for="genPeriod">Month</label>
+              <input id="genPeriod" type="month">
+              <div class="help">The month the bill covers.</div></div>
+            <div class="field"><label for="genAmount">Amount per flat</label>
+              <input id="genAmount" type="number" step="0.01" min="0" placeholder="3500">
+              <div class="help">Applied to all 30 residential flats.</div></div>
+          </div>
+          <div class="field">
+            <label for="genCommon">Master meter amount</label>
+            <input id="genCommon" type="number" step="0.01" min="0" placeholder="leave blank to skip">
+            <div class="help">Stairs, lift and garage. Leave empty and no line is created for it.</div>
+          </div>
+          <div id="genPreview"></div>
+          <button class="btn" id="genBtn">Review and create</button>
+        </div>
+      </div>
+
       <div class="block">
-        <h2>Flat records</h2>
-        <p class="sub">Meter number, owner and tenant. Residents can edit their own; you can edit any.</p>
+        <h3>Flat records</h3>
+        <p class="sub">Grouped by block. Meter numbers edit in place; owner and tenant details open a form.</p>
         <div id="adminFlatRows"></div>
       </div>
 
       <div class="block">
-        <h2>Logins</h2>
-        <p class="sub">Create the account in Supabase → Authentication → Users, then link it to a flat here.</p>
+        <h3>Logins</h3>
+        <p class="sub">Create accounts in Supabase → Authentication → Users, then link each one to its flat.</p>
+        <div class="toolbar">
+          <div class="field grow">
+            <label for="uSearch">Search</label>
+            <input id="uSearch" type="search" placeholder="Name or email" autocomplete="off">
+          </div>
+          <div class="field">
+            <span class="lbl">Show</span>
+            <div class="chipset" role="group" aria-label="Filter accounts">
+              <button class="chipbtn" data-ufil="all" aria-pressed="true">All</button>
+              <button class="chipbtn" data-ufil="unlinked" aria-pressed="false">Unlinked</button>
+              <button class="chipbtn" data-ufil="admin" aria-pressed="false">Committee</button>
+            </div>
+          </div>
+        </div>
         <div class="rows" id="userRows"></div>
       </div>
     </section>
   </main>
 </div>
 
+<div id="toasts" aria-live="polite" aria-atomic="false"></div>
+<div id="layers"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* =====================================================================
-   CONFIG — paste your two values here (Supabase → Settings → API Keys)
-   The publishable key is safe to publish: the database rules decide access.
+   CONFIG — Supabase → Settings → API Keys (publishable key)
    ===================================================================== */
 const CONFIG = {
   url:      'https://dzvcucceooevdjnfkunt.supabase.co',
@@ -315,231 +716,814 @@ const CONFIG = {
   building: 'Mayaz Home testing'     // your building's name
 };
 
-/* ===================================================================== */
+/* ===== helpers ===================================================== */
 const sb = supabase.createClient(CONFIG.url, CONFIG.anonKey);
 const $  = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const thisMonth = () => new Date().toISOString().slice(0,7);
-const money = n => n == null ? '—' : Number(n).toLocaleString('en-BD',{minimumFractionDigits:0});
-const LABEL = {verified:'Verified', submitted:'Awaiting check', unpaid:'Not paid',
-               rejected:'Sent back', none:'No bill line'};
-const BLOCKNAME = {A:'Block A', B:'Block B', C:'Block C', D:'Block D'};
+const money = n => n == null ? '—' : '৳' + Number(n).toLocaleString('en-BD');
+const kb = b => b < 1024*1024 ? Math.round(b/1024)+' KB' : (b/1048576).toFixed(1)+' MB';
+const MONTHS = ['January','February','March','April','May','June','July',
+                'August','September','October','November','December'];
+const monthLabel = p => { if(!p) return '—'; const [y,m]=p.split('-');
+  return (MONTHS[+m-1]||m) + ' ' + y; };
+const ago = iso => {
+  if (!iso) return '';
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s/60) + ' min ago';
+  if (s < 86400) return Math.floor(s/3600) + ' hr ago';
+  return Math.floor(s/86400) + ' d ago';
+};
+const dateTime = iso => iso ? new Date(iso).toLocaleString('en-GB',
+  {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
 
-let ME = null, FLATS = [], CONTACTS = [];
+const STATUS = {
+  verified : {label:'Verified',       ic:'✓', cls:'verified'},
+  submitted: {label:'Awaiting review',ic:'◔', cls:'submitted'},
+  unpaid   : {label:'Action needed',  ic:'!', cls:'unpaid'},
+  rejected : {label:'Sent back',      ic:'↺', cls:'rejected'},
+  none     : {label:'Not opened',     ic:'○', cls:'none'}
+};
+const pill = st => { const s = STATUS[st] || STATUS.none;
+  return `<span class="pill ${s.cls}"><span class="ic" aria-hidden="true">${s.ic}</span>${s.label}</span>`; };
 
-const msg = (el, text, kind='err') =>
-  el.innerHTML = text ? `<div class="msg ${kind}">${esc(text)}</div>` : '';
-const myFlat = () => FLATS.find(f => f.id === ME.flat_id);
-const canSeeNid = f => ME.role === 'admin' || f.id === ME.flat_id;
+const PHONE_OK = v => !v || /^[0-9+\-\s()]{6,20}$/.test(v);
 
-/* ---------------- auth ---------------- */
-$('signIn').onclick = async () => {
-  const btn = $('signIn'); btn.disabled = true; msg($('loginMsg'),'');
+/* ===== state ======================================================= */
+let ME = null, FLATS = [], CONTACTS = [], BILLS = {}, QUEUE = [], USERS = [];
+let lastSync = null, dirty = false;
+const F = { search:'', block:'all', onlyMine:false, showCommon:true, status:null,
+            dirSearch:'', dirBlock:'all', occ:'all', mode:'cards',
+            qSearch:'', qSort:'old', qPeriod:'', uSearch:'', uFil:'all' };
 
-  if (CONFIG.url.includes('YOUR-PROJECT-REF') || CONFIG.anonKey.includes('YOUR-')) {
-    btn.disabled = false;
-    return msg($('loginMsg'), 'This page has not been configured yet — the CONFIG block near the bottom of index.html still has the placeholder values.');
+const myFlat   = () => FLATS.find(f => f.id === ME.flat_id);
+const canSeeNid= f  => ME.role === 'admin' || f.id === ME.flat_id;
+const blocksOf = () => [...new Set(FLATS.filter(f=>!f.is_common).map(f=>f.block))].sort();
+
+/* ===== toasts ====================================================== */
+function toast(text, kind='ok'){
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.innerHTML = `<span class="dot" aria-hidden="true">${kind==='err'?'!':'✓'}</span><span>${esc(text)}</span>`;
+  $('toasts').appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity .3s';
+                     setTimeout(()=>el.remove(),320); }, kind==='err'?5200:3000);
+}
+function banner(el, text, kind='err', actionHtml=''){
+  const ic = {err:'!', ok:'✓', warn:'▲', info:'i'}[kind];
+  el.innerHTML = text
+    ? `<div class="msg ${kind}"><span class="ic" aria-hidden="true">${ic}</span>
+       <span>${text}</span>${actionHtml?`<span class="act">${actionHtml}</span>`:''}</div>` : '';
+}
+
+/* ===== dialogs (replace alert / prompt) ============================ */
+let openLayer = null;
+function closeLayer(){
+  if (!openLayer) return;
+  const { node, restore } = openLayer;
+  node.remove(); openLayer = null;
+  document.body.style.overflow = '';
+  if (restore && restore.focus) restore.focus();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && openLayer) closeLayer();
+  if (e.key === 'Tab' && openLayer){
+    const f = openLayer.node.querySelectorAll(
+      'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])');
+    if (!f.length) return;
+    const first = f[0], last = f[f.length-1];
+    if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
   }
+});
+
+function layer(kind, innerHtml){
+  closeLayer();
+  const restore = document.activeElement;
+  const wrap = document.createElement('div');
+  wrap.className = 'backdrop ' + (kind === 'drawer' ? 'right' : 'center');
+  wrap.innerHTML = `<div class="${kind === 'drawer' ? 'drawer' : 'dialog'}"
+      role="dialog" aria-modal="true">${innerHtml}</div>`;
+  wrap.addEventListener('mousedown', e => { if (e.target === wrap) closeLayer(); });
+  $('layers').appendChild(wrap);
+  document.body.style.overflow = 'hidden';
+  openLayer = { node: wrap, restore };
+  const focusMe = wrap.querySelector('[autofocus],button,input,select');
+  if (focusMe) focusMe.focus();
+  wrap.querySelectorAll('[data-close]').forEach(b => b.onclick = closeLayer);
+  return wrap;
+}
+
+function confirmDialog({title, body, confirmText='Confirm', danger=false,
+                        noteLabel=null, noteRequired=false, notePlaceholder=''}){
+  return new Promise(resolve => {
+    const w = layer('dialog', `
+      <div class="dhead"><h3>${esc(title)}</h3>
+        <button class="x" data-close aria-label="Close">×</button></div>
+      <div class="dbody">
+        ${body}
+        ${noteLabel ? `<div class="field" style="margin-top:14px">
+          <label for="dlgNote">${esc(noteLabel)}</label>
+          <textarea id="dlgNote" rows="3" placeholder="${esc(notePlaceholder)}"></textarea>
+          <div class="err hidden" id="dlgNoteErr">Please write a short reason.</div></div>` : ''}
+      </div>
+      <div class="dfoot">
+        <button class="btn ghost" data-close>Cancel</button>
+        <button class="btn ${danger?'danger':''}" id="dlgOk">${esc(confirmText)}</button>
+      </div>`);
+    w.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { closeLayer(); resolve(null); });
+    w.addEventListener('mousedown', e => { if (e.target === w) resolve(null); });
+    $('dlgOk').onclick = () => {
+      const note = $('dlgNote') ? $('dlgNote').value.trim() : null;
+      if (noteRequired && !note){
+        $('dlgNoteErr').classList.remove('hidden');
+        $('dlgNote').setAttribute('aria-invalid','true'); $('dlgNote').focus(); return;
+      }
+      closeLayer(); resolve({ note });
+    };
+    if ($('dlgNote')) $('dlgNote').focus();
+  });
+}
+function infoDialog(title, body){
+  const w = layer('dialog', `
+    <div class="dhead"><h3>${esc(title)}</h3><button class="x" data-close aria-label="Close">×</button></div>
+    <div class="dbody">${body}</div>
+    <div class="dfoot"><button class="btn" data-close>Close</button></div>`);
+  w.querySelectorAll('[data-close]').forEach(b => b.onclick = closeLayer);
+}
+
+/* ===== busy button ================================================= */
+async function busy(btn, label, fn){
+  const old = btn.innerHTML, wasDisabled = btn.disabled;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin" aria-hidden="true"></span>${esc(label)}`;
+  try { return await fn(); }
+  finally { btn.innerHTML = old; btn.disabled = wasDisabled; }
+}
+
+/* ===== login ======================================================= */
+$('pwToggle').onclick = () => {
+  const p = $('pass'), show = p.type === 'password';
+  p.type = show ? 'text' : 'password';
+  $('pwToggle').textContent = show ? 'Hide' : 'Show';
+  $('pwToggle').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  p.focus();
+};
+$('email').addEventListener('blur', () => {
+  const v = $('email').value.trim();
+  const bad = v && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
+  $('emailErr').textContent = bad ? 'That does not look like an email address.' : '';
+  $('emailErr').classList.toggle('hidden', !bad);
+  $('email').setAttribute('aria-invalid', bad ? 'true' : 'false');
+});
+$('needAccess').onclick = () => infoDialog('Getting access',
+  `<p style="margin-top:0">Logins are issued by the building committee — one account per flat.</p>
+   <p>If you do not have one yet, or you have forgotten the password, ask a committee member.
+   They can create or reset your account. Passwords cannot be recovered by email, because these
+   accounts are not tied to a working inbox.</p>`);
+$('email').addEventListener('keydown', e => { if (e.key === 'Enter') $('pass').focus(); });
+$('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('signIn').click(); });
+
+$('signIn').onclick = () => busy($('signIn'), 'Signing in…', async () => {
+  banner($('loginMsg'), '');
+  if (CONFIG.url.includes('YOUR-PROJECT') || CONFIG.anonKey.includes('PASTE_YOUR')){
+    return banner($('loginMsg'),
+      'This page has not been configured. The CONFIG block in index.html still holds placeholder values.',
+      'warn');
+  }
+  const email = $('email').value.trim();
+  if (!email || !$('pass').value)
+    return banner($('loginMsg'), 'Enter both your email and password.', 'warn');
 
   let error;
-  try {
-    ({ error } = await sb.auth.signInWithPassword({
-      email: $('email').value.trim(), password: $('pass').value }));
-  } catch (e) { error = e; }
-  btn.disabled = false;
+  try { ({ error } = await sb.auth.signInWithPassword({ email, password: $('pass').value })); }
+  catch (e) { error = e; }
 
   if (error){
-    const m = (error.message || '').toLowerCase();
     console.error('Sign-in failed:', error);
+    const m = (error.message || '').toLowerCase();
     if (m.includes('invalid login credentials'))
-      return msg($('loginMsg'), 'That email and password did not match. Check with the committee if you are unsure.');
+      return banner($('loginMsg'), 'That email and password did not match.', 'err');
     if (m.includes('email not confirmed'))
-      return msg($('loginMsg'), 'This account was created without "Auto Confirm User". The committee needs to confirm it in Supabase.');
+      return banner($('loginMsg'),
+        'This account still needs confirming. Ask the committee to enable it in Supabase.', 'err');
     if (m.includes('api key') || m.includes('invalid api'))
-      return msg($('loginMsg'), 'The publishable key in index.html is wrong or incomplete. Copy it again from Supabase → Settings → API Keys.');
+      return banner($('loginMsg'),
+        'The publishable key in index.html is wrong or incomplete.', 'err');
     if (m.includes('failed to fetch') || m.includes('networkerror'))
-      return msg($('loginMsg'), 'Could not reach Supabase. The project URL may be wrong, or the project is paused — check the Supabase dashboard.');
-    return msg($('loginMsg'), 'Sign-in failed: ' + (error.message || error));
+      return banner($('loginMsg'),
+        'Could not reach the server. Check your connection, or the project may be paused.', 'err',
+        '<button class="btn sm" onclick="location.reload()">Retry</button>');
+    return banner($('loginMsg'), 'Sign-in failed: ' + esc(error.message || error), 'err');
   }
-  start();
-};
-$('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('signIn').click(); });
-$('email').addEventListener('keydown', e => { if (e.key === 'Enter') $('pass').focus(); });
-$('signOut').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  await start();
+});
 
-/* ---------------- boot ---------------- */
+/* ===== boot ======================================================== */
 (async function init(){
   $('bldgName').textContent = CONFIG.building;
   $('hdrName').textContent  = CONFIG.building;
   document.title = CONFIG.building;
-  const { data:{ session } } = await sb.auth.getSession();
-  if (session) start();
+  try {
+    const { data:{ session } } = await sb.auth.getSession();
+    if (session) return await start();
+  } catch (e) { console.error(e); }
+  $('boot').classList.add('hidden');
+  $('login').classList.remove('hidden');
+  $('email').focus();
 })();
 
 async function start(){
-  const { data:{ user } } = await sb.auth.getUser();
-  const { data: prof } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  ME = { id:user.id, email:user.email, ...(prof || {role:'resident'}) };
-
-  await refreshFlats();
-  const { data: contacts } = await sb.from('contacts').select('*').order('sort_order');
-  CONTACTS = contacts || [];
-
-  $('whoName').textContent = ME.full_name || ME.email;
-  $('whoFlat').textContent = ME.role === 'admin' ? 'Committee'
-                           : myFlat() ? myFlat().flat_no : 'No flat linked';
-  if (ME.role === 'admin') document.querySelector('[data-view=admin]').classList.remove('hidden');
-
+  $('boot').classList.remove('hidden');
   $('login').classList.add('hidden');
-  $('app').classList.remove('hidden');
+  try {
+    const { data:{ user } } = await sb.auth.getUser();
+    const { data: prof } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    ME = { id:user.id, email:user.email, role:'resident', ...(prof || {}) };
 
-  $('period').value = $('upPeriod').value = $('genPeriod').value = thisMonth();
-  renderDirectory();
-  loadBoard();
-  loadMine();
-  if (ME.role === 'admin') loadAdmin();
+    await loadCore();
+
+    const f = myFlat();
+    $('whoName').textContent = ME.full_name || ME.email;
+    $('avatar').textContent = (ME.role === 'admin' ? 'C' : (f ? f.flat_no : '?')).slice(0,3);
+    $('bldgSub').textContent = FLATS.filter(x=>!x.is_common).length + ' flats';
+    if (ME.role === 'admin') document.querySelector('[data-view=admin]').classList.remove('hidden');
+    if (ME.role === 'admin') $('jumpQueue').classList.remove('hidden');
+
+    $('period').value = $('upPeriod').value = $('genPeriod').value = thisMonth();
+    buildBlockFilters();
+    renderContacts(); renderDirectory();
+    await loadBoard();
+    await loadMine();
+    if (ME.role === 'admin') await loadAdmin();
+
+    $('boot').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    markSync();
+  } catch (e){
+    console.error(e);
+    $('boot').classList.add('hidden');
+    $('login').classList.remove('hidden');
+    banner($('loginMsg'), 'Could not load your data: ' + esc(e.message || e), 'err',
+      '<button class="btn sm" onclick="location.reload()">Retry</button>');
+  }
 }
 
-async function refreshFlats(){
-  const { data } = await sb.from('flats').select('*')
-    .order('is_common').order('block').order('flat_number');
-  FLATS = data || [];
+async function loadCore(){
+  const [{ data:flats, error:e1 }, { data:contacts }] = await Promise.all([
+    sb.from('flats').select('*').order('is_common').order('block').order('flat_number'),
+    sb.from('contacts').select('*').order('sort_order')
+  ]);
+  if (e1) throw e1;
+  FLATS = flats || []; CONTACTS = contacts || [];
 }
 
-/* ---------------- tabs ---------------- */
-$('tabs').addEventListener('click', e => {
-  const b = e.target.closest('button[data-view]'); if (!b) return;
-  [...$('tabs').children].forEach(x => x.setAttribute('aria-selected', x === b));
-  ['board','directory','mine','admin'].forEach(v =>
-    $('view-'+v).classList.toggle('hidden', v !== b.dataset.view));
-  window.scrollTo(0,0);
+function markSync(){ lastSync = Date.now(); paintSync(); }
+function paintSync(){
+  if (!lastSync) return;
+  const s = Math.floor((Date.now()-lastSync)/1000);
+  $('syncTxt').textContent = 'Updated ' + (s<60 ? 'just now'
+    : s<3600 ? Math.floor(s/60)+' min ago' : Math.floor(s/3600)+' hr ago');
+}
+setInterval(paintSync, 30000);
+
+$('refreshBtn').onclick = () => busy($('refreshBtn'), '', async () => {
+  await loadCore(); renderContacts(); renderDirectory();
+  await loadBoard(); await loadMine();
+  if (ME.role === 'admin') await loadAdmin();
+  markSync(); toast('Refreshed');
 });
 
-/* group flats into [{head, flats}] — A, B, C, D, then the master meter */
-function grouped(){
-  const out = [];
-  for (const f of FLATS){
-    const head = f.is_common ? 'Common areas' : (BLOCKNAME[f.block] || 'Other');
-    let g = out[out.length-1];
-    if (!g || g.head !== head) out.push(g = { head, flats:[] });
-    g.flats.push(f);
-  }
-  return out;
-}
+$('userBtn').onclick = () => {
+  const f = myFlat();
+  infoDialog('Signed in', `
+    <dl class="kv">
+      <dt>Name</dt><dd>${esc(ME.full_name || '—')}</dd>
+      <dt>Email</dt><dd>${esc(ME.email || '—')}</dd>
+      <dt>Role</dt><dd>${ME.role === 'admin' ? 'Committee' : 'Resident'}</dd>
+      <dt>Flat</dt><dd>${f ? esc(f.flat_no) : '<span class="none-txt">not linked</span>'}</dd>
+    </dl>
+    <div style="margin-top:16px"><button class="btn ghost wide" id="signOutBtn">Sign out</button></div>`);
+  $('signOutBtn').onclick = async () => {
+    if (dirty){
+      const go = await confirmDialog({ title:'Unsaved changes',
+        body:'<p style="margin:0">Your flat details have changes that have not been saved. Sign out anyway?</p>',
+        confirmText:'Sign out', danger:true });
+      if (!go) return;
+    }
+    await sb.auth.signOut(); location.reload();
+  };
+};
 
-/* ---------------- bill board ---------------- */
+/* ===== tabs ======================================================== */
+$('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-view]'); if (!b) return;
+  [...$('tabs').children].forEach(x => x.setAttribute('aria-selected', String(x === b)));
+  ['board','directory','mine','admin'].forEach(v =>
+    $('view-'+v).classList.toggle('hidden', v !== b.dataset.view));
+  b.scrollIntoView({block:'nearest', inline:'center'});
+  window.scrollTo(0,0);
+});
+function goTab(name){ document.querySelector(`[data-view=${name}]`).click(); }
+
+/* ===== filters ===================================================== */
+function buildBlockFilters(){
+  const html = ['all', ...blocksOf()].map(b =>
+    `<button class="chipbtn" data-block="${b}" aria-pressed="${b==='all'}">${b==='all'?'All':'Block '+b}</button>`
+  ).join('');
+  $('blockFilter').innerHTML = html;
+  $('dirBlockFilter').innerHTML = html;
+}
+function chipGroup(container, attr, onPick){
+  container.addEventListener('click', e => {
+    const b = e.target.closest('[data-'+attr+']'); if (!b) return;
+    [...container.querySelectorAll('[data-'+attr+']')]
+      .forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    onPick(b.dataset[attr]);
+  });
+}
+chipGroup($('blockFilter'), 'block', v => { F.block = v; renderBoard(); });
+chipGroup($('dirBlockFilter'), 'block', v => { F.dirBlock = v; renderDirectory(); });
+document.querySelectorAll('[data-occ]').forEach(b => b.closest('.chipset') &&
+  chipGroup(b.closest('.chipset'), 'occ', v => { F.occ = v; renderDirectory(); }));
+document.querySelectorAll('[data-mode]').forEach(b => b.closest('.chipset') &&
+  chipGroup(b.closest('.chipset'), 'mode', v => { F.mode = v; renderDirectory(); }));
+document.querySelectorAll('[data-ufil]').forEach(b => b.closest('.chipset') &&
+  chipGroup(b.closest('.chipset'), 'ufil', v => { F.uFil = v; renderUsers(); }));
+
+const debounce = (fn, ms=180) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; };
+$('boardSearch').addEventListener('input', debounce(e => { F.search = e.target.value.trim().toLowerCase(); renderBoard(); }));
+$('dirSearch').addEventListener('input', debounce(e => { F.dirSearch = e.target.value.trim().toLowerCase(); renderDirectory(); }));
+$('qSearch').addEventListener('input', debounce(e => { F.qSearch = e.target.value.trim().toLowerCase(); renderQueue(); }));
+$('uSearch').addEventListener('input', debounce(e => { F.uSearch = e.target.value.trim().toLowerCase(); renderUsers(); }));
+$('qSort').onchange = e => { F.qSort = e.target.value; renderQueue(); };
+$('qPeriod').onchange = e => { F.qPeriod = e.target.value; renderQueue(); };
+$('onlyMine').onchange = e => { F.onlyMine = e.target.checked; renderBoard(); };
+$('showCommon').onchange = e => { F.showCommon = e.target.checked; renderBoard(); };
+$('clearFilters').onclick = () => {
+  F.search=''; F.block='all'; F.onlyMine=false; F.showCommon=true; F.status=null;
+  $('boardSearch').value=''; $('onlyMine').checked=false; $('showCommon').checked=true;
+  [...$('blockFilter').children].forEach(x => x.setAttribute('aria-pressed', String(x.dataset.block==='all')));
+  renderBoard();
+};
+
+/* ===== bill board ================================================== */
 $('period').onchange = loadBoard;
 
 async function loadBoard(){
   const period = $('period').value || thisMonth();
-  const { data: bills } = await sb.from('bills').select('*').eq('period', period);
-  const byFlat = Object.fromEntries((bills||[]).map(b => [b.flat_id, b]));
-  const count = { verified:0, submitted:0, unpaid:0 };
-
-  $('board').innerHTML = grouped().map(g => `
-    <div class="blockhead">${esc(g.head)}</div>
-    <div class="board">${g.flats.map(f => {
-      const b = byFlat[f.id];
-      const st = b ? b.status : 'none';
-      if (!f.is_common){
-        if (st === 'verified') count.verified++;
-        else if (st === 'submitted') count.submitted++;
-        else count.unpaid++;
-      }
-      return `<div class="tile ${st}${f.id===ME.flat_id?' me':''}">
-        <b>${esc(f.flat_no)}</b><span>${esc(LABEL[st])}</span></div>`;
-    }).join('')}</div>`).join('') || '<div class="empty">No flats yet.</div>';
-
-  $('tally').innerHTML = `
-    <div><b style="color:var(--paid)">${count.verified}</b><span>Verified</span></div>
-    <div><b style="color:var(--pending)">${count.submitted}</b><span>Awaiting check</span></div>
-    <div><b style="color:var(--due)">${count.unpaid}</b><span>Outstanding</span></div>
-    <div><b>${FLATS.filter(f=>!f.is_common).length}</b><span>Flats</span></div>`;
+  $('board').innerHTML = `<div class="board">${'<div class="skel skeltile"></div>'.repeat(8)}</div>`;
+  const { data, error } = await sb.from('bills').select('*').eq('period', period);
+  if (error){
+    banner($('board'), 'Could not load this month: ' + esc(error.message), 'err',
+      '<button class="btn sm" id="retryBoard">Try again</button>');
+    const r = $('retryBoard'); if (r) r.onclick = loadBoard;
+    return;
+  }
+  BILLS = Object.fromEntries((data||[]).map(b => [b.flat_id, b]));
+  $('boardSub').textContent = 'Every meter in the building for ' + monthLabel(period) + '.';
+  renderBoard(); markSync();
 }
 
-/* ---------------- directory ---------------- */
-const tel = p => p ? `<a class="tel" href="tel:${esc(p)}">${esc(p)}</a>`
-                   : '<span class="none">no number</span>';
+function boardRows(){
+  return FLATS.filter(f => {
+    if (f.is_common && !F.showCommon) return false;
+    if (F.onlyMine && f.id !== ME.flat_id) return false;
+    if (F.block !== 'all' && f.block !== F.block) return false;
+    if (F.search && !f.flat_no.toLowerCase().includes(F.search)) return false;
+    if (F.status){
+      const st = BILLS[f.id] ? BILLS[f.id].status : 'none';
+      if (F.status === 'outstanding'){ if (st==='verified'||st==='submitted') return false; }
+      else if (st !== F.status) return false;
+    }
+    return true;
+  });
+}
 
-function party(tag, name, phone, nidPath, f){
-  const view = nidPath && canSeeNid(f)
-    ? ` <button class="btn ghost sm" data-doc="${esc(nidPath)}">NID</button>` : '';
+function renderBoard(){
+  const all = FLATS.filter(f => !f.is_common);
+  const c = { verified:0, submitted:0, outstanding:0 };
+  all.forEach(f => { const st = BILLS[f.id] ? BILLS[f.id].status : 'none';
+    if (st === 'verified') c.verified++; else if (st === 'submitted') c.submitted++; else c.outstanding++; });
+  const total = all.length || 1;
+  const pct = Math.round(c.verified / total * 100);
+
+  $('progressWrap').innerHTML = `
+    <div class="progress">
+      <div class="top"><span>Coverage for <b>${esc(monthLabel($('period').value))}</b></span>
+        <span><b>${c.verified}</b> of <b>${all.length}</b> flats verified · ${pct}%</span></div>
+      <div class="bar" role="img" aria-label="${c.verified} of ${all.length} flats verified">
+        <i class="b-ok"   style="width:${c.verified/total*100}%"></i>
+        <i class="b-warn" style="width:${c.submitted/total*100}%"></i>
+        <i class="b-bad"  style="width:${c.outstanding/total*100}%"></i>
+      </div>
+    </div>`;
+
+  const m = (key, val, label, desc, cls) => `
+    <button class="metric ${cls}" data-status="${key}" aria-pressed="${F.status===key}">
+      <b>${val}</b><span class="k">${label}</span><span class="d">${desc}</span></button>`;
+  $('metrics').innerHTML =
+    m('verified', c.verified, 'Verified', 'accepted by committee', 'ok') +
+    m('submitted', c.submitted, 'Awaiting review', 'uploaded, not yet checked', 'warn') +
+    m('outstanding', c.outstanding, 'Action needed', 'unpaid, sent back or not opened', 'bad') +
+    `<div class="metric neutral"><b>${pct}%</b><span class="k">Coverage</span>
+      <span class="d">${c.verified} of ${all.length} flats</span></div>`;
+
+  const rows = boardRows();
+  const active = F.search || F.block!=='all' || F.onlyMine || !F.showCommon || F.status;
+  $('clearFilters').classList.toggle('hidden', !active);
+
+  if (!rows.length){
+    $('board').innerHTML = `<div class="empty"><span class="big" aria-hidden="true">⌕</span>
+      <div class="t">Nothing matches those filters</div>
+      <div>Try a different block or clear the filters.</div></div>`;
+    return;
+  }
+
+  const groups = [];
+  rows.forEach(f => {
+    const head = f.is_common ? 'Common areas' : 'Block ' + f.block;
+    let g = groups[groups.length-1];
+    if (!g || g.head !== head) groups.push(g = {head, items:[]});
+    g.items.push(f);
+  });
+
+  $('board').innerHTML = groups.map(g => `
+    <div class="sectionhead">${esc(g.head)}</div>
+    <div class="board">${g.items.map(f => {
+      const b = BILLS[f.id]; const st = b ? b.status : 'none'; const s = STATUS[st];
+      return `<button class="tile ${st}" data-flat="${f.id}"
+          aria-label="${esc(f.flat_no)} — ${s.label}">
+        <b>${esc(f.flat_no)}${f.id===ME.flat_id?'<span class="you">you</span>':''}</b>
+        <span class="st"><span aria-hidden="true">${s.ic}</span>${s.label}</span>
+        ${b && b.amount != null ? `<span class="amt">${money(b.amount)}</span>` : ''}
+      </button>`;
+    }).join('')}</div>`).join('');
+}
+
+$('metrics').addEventListener('click', e => {
+  const b = e.target.closest('[data-status]'); if (!b) return;
+  F.status = F.status === b.dataset.status ? null : b.dataset.status;
+  renderBoard();
+});
+$('board').addEventListener('click', e => {
+  const t = e.target.closest('[data-flat]'); if (!t) return;
+  openFlatDrawer(Number(t.dataset.flat));
+});
+$('jumpQueue').onclick = () => { goTab('admin');
+  setTimeout(() => $('queueRows').scrollIntoView({behavior:'smooth', block:'center'}), 60); };
+$('copySummary').onclick = async () => {
+  const all = FLATS.filter(f=>!f.is_common);
+  const line = st => all.filter(f => (BILLS[f.id]?BILLS[f.id].status:'none') === st)
+                        .map(f=>f.flat_no).join(', ') || 'none';
+  const txt = `${CONFIG.building} — ${monthLabel($('period').value)}
+Verified: ${line('verified')}
+Awaiting review: ${line('submitted')}
+Not paid: ${all.filter(f=>{const s=BILLS[f.id]?BILLS[f.id].status:'none';
+  return s!=='verified'&&s!=='submitted';}).map(f=>f.flat_no).join(', ')||'none'}`;
+  try { await navigator.clipboard.writeText(txt); toast('Summary copied'); }
+  catch { infoDialog('Summary', `<pre style="white-space:pre-wrap;font:13px var(--mono);margin:0">${esc(txt)}</pre>`); }
+};
+
+/* ----- flat detail drawer ----- */
+async function openFlatDrawer(flatId){
+  const f = FLATS.find(x => x.id === flatId); if (!f) return;
+  const b = BILLS[flatId];
+  const st = b ? b.status : 'none';
+  const mine = flatId === ME.flat_id;
+
+  layer('drawer', `
+    <div class="dhead">
+      <div><h3>${esc(f.flat_no)}</h3>
+        <div style="margin-top:5px">${pill(st)}</div></div>
+      <button class="x" data-close aria-label="Close">×</button>
+    </div>
+    <div class="dbody">
+      <dl class="kv">
+        <dt>Month</dt><dd>${esc(monthLabel($('period').value))}</dd>
+        <dt>Amount</dt><dd class="mono-sm" style="font-size:14px">${money(b && b.amount)}</dd>
+        ${f.meter_no ? `<dt>Meter</dt><dd class="mono-sm" style="font-size:14px">${esc(f.meter_no)}</dd>` : ''}
+        ${f.is_common ? '' : `<dt>Occupancy</dt><dd>${f.tenant_name ? 'Rented' : 'Owner occupied'}</dd>`}
+        ${b && b.updated_at ? `<dt>Last change</dt><dd>${esc(dateTime(b.updated_at))}</dd>` : ''}
+      </dl>
+      ${b && b.admin_note ? `<div class="msg warn" style="margin-top:14px">
+        <span class="ic" aria-hidden="true">▲</span><span><b>Committee note:</b> ${esc(b.admin_note)}</span></div>` : ''}
+      ${b && b.receipt_path && (mine || ME.role==='admin')
+        ? `<button class="btn ghost" data-preview="receipts|${esc(b.receipt_path)}" style="margin-top:6px">View bill copy</button>`
+        : (b && b.receipt_path ? '<p class="help">A copy is on file. Only that flat and the committee can open it.</p>' : '')}
+      <div id="drawerHistory"><div class="skel skelrow" style="margin-top:16px"></div></div>
+    </div>
+    <div class="dfoot">
+      ${ME.role==='admin' && st==='submitted' ? `
+        <div class="left">
+          <button class="btn ghost" data-reject="${b.id}">Send back</button>
+          <button class="btn" data-verify="${b.id}">Verify</button>
+        </div>` : ''}
+      ${mine && st!=='verified' ? `<button class="btn" id="drawerUpload">Upload a copy</button>` : ''}
+      <button class="btn ghost" data-close>Close</button>
+    </div>`);
+
+  const dh = $('drawerHistory');
+  if (b){
+    const { data: ev } = await sb.from('bill_events').select('*')
+      .eq('bill_id', b.id).order('created_at', {ascending:false});
+    dh.innerHTML = (ev && ev.length) ? `
+      <div class="sectionhead">History</div>
+      <ul class="timeline">${ev.map(e => `<li>
+        <div>${esc(STATUS[e.to_status] ? STATUS[e.to_status].label : e.to_status)}
+        ${e.actor_name ? '· ' + esc(e.actor_name) : ''}</div>
+        ${e.note ? `<div style="color:var(--muted)">${esc(e.note)}</div>` : ''}
+        <div class="when">${esc(dateTime(e.created_at))}</div></li>`).join('')}</ul>` : '';
+  } else dh.innerHTML = '';
+
+  const up = $('drawerUpload');
+  if (up) up.onclick = () => { closeLayer(); goTab('mine');
+    setTimeout(() => $('mineUpload').scrollIntoView({behavior:'smooth', block:'center'}), 60); };
+}
+
+/* ===== previews ==================================================== */
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-preview]'); if (!t) return;
+  const [bucket, path] = t.dataset.preview.split('|');
+  await busy(t, 'Opening…', async () => {
+    const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 180);
+    if (error) return toast('Could not open that file: ' + error.message, 'err');
+    const isPdf = /\.pdf$/i.test(path);
+    const name = path.split('/').pop();
+    infoDialog('Document preview', `
+      ${isPdf ? `<iframe class="preview" src="${data.signedUrl}" title="Document"></iframe>`
+              : `<img class="preview" src="${data.signedUrl}" alt="Uploaded document">`}
+      <p class="help" style="margin-top:10px">${esc(name)} · link expires in 3 minutes</p>
+      <a class="btn ghost sm" href="${data.signedUrl}" target="_blank" rel="noopener"
+         style="margin-top:6px">Open in a new tab</a>`);
+  });
+});
+
+/* ===== directory =================================================== */
+const telLink = p => p ? `<a class="tel" href="tel:${esc(p)}">${esc(p)}</a>`
+                       : '<span class="none-txt">no number</span>';
+const copyBtn = p => p ? `<button class="btn quiet sm" data-copy="${esc(p)}"
+  aria-label="Copy ${esc(p)}">copy</button>` : '';
+
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-copy]'); if (!t) return;
+  try { await navigator.clipboard.writeText(t.dataset.copy); toast('Number copied'); }
+  catch { toast('Could not copy', 'err'); }
+});
+
+function renderContacts(){
+  $('contactRows').innerHTML = CONTACTS.length ? CONTACTS.map(c => `
+    <div class="row">
+      <div class="nm"><b>${esc(c.designation || c.name)}</b><small>${esc(c.name)}</small></div>
+      <div class="inline">${telLink(c.phone)}${copyBtn(c.phone)}
+        ${c.phone?`<a class="btn ghost sm" href="tel:${esc(c.phone)}">Call</a>`:''}</div>
+    </div>`).join('')
+    : `<div class="empty"><span class="big" aria-hidden="true">☎</span>
+       <div class="t">No guard numbers yet</div>
+       <div>The committee adds these in Supabase → Table Editor → contacts.</div></div>`;
+}
+
+function dirRows(){
+  const q = F.dirSearch;
+  return FLATS.filter(f => {
+    if (f.is_common) return false;
+    if (F.dirBlock !== 'all' && f.block !== F.dirBlock) return false;
+    if (F.occ === 'owner' && f.tenant_name) return false;
+    if (F.occ === 'rented' && !f.tenant_name) return false;
+    if (q){
+      const hay = [f.flat_no, f.owner_name, f.tenant_name, f.phone, f.tenant_phone, f.meter_no]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function partyHtml(tag, name, phone, nidPath, f){
+  const nid = nidPath && canSeeNid(f)
+    ? ` <button class="btn quiet sm" data-preview="documents|${esc(nidPath)}">NID</button>` : '';
   return `<div class="party"><div class="tag">${tag}</div>
-    <div class="pn">${name ? esc(name) : '<span class="none">not recorded</span>'}</div>
-    <div>${tel(phone)}${view}</div></div>`;
+    <div class="pn">${name ? esc(name) : '<span class="none-txt">not recorded</span>'}</div>
+    <div class="inline">${telLink(phone)}${copyBtn(phone)}${nid}</div></div>`;
 }
 
 function renderDirectory(){
-  $('contactRows').innerHTML = CONTACTS.length ? CONTACTS.map(c => `
-    <div class="row"><div class="nm"><b>${esc(c.designation||c.name)}</b>
-    <small>${esc(c.name)}</small></div>${tel(c.phone)}</div>`).join('')
-    : '<div class="empty">The committee has not added guard numbers yet.</div>';
+  const rows = dirRows();
+  if (!rows.length){
+    $('flatCards').innerHTML = `<div class="empty"><span class="big" aria-hidden="true">⌕</span>
+      <div class="t">No flats match</div><div>Try clearing the search or block filter.</div></div>`;
+    return;
+  }
+  if (F.mode === 'list'){
+    $('flatCards').innerHTML = `<div class="rows">${rows.map(f => `
+      <div class="row">
+        <span class="no">${esc(f.flat_no)}</span>
+        <div class="nm"><b>${esc(f.owner_name || '—')}</b>
+          ${f.tenant_name ? `<small>Tenant: ${esc(f.tenant_name)}</small>` : ''}</div>
+        <span class="badge ${f.tenant_name?'rented':''}">${f.tenant_name?'Rented':'Owner'}</span>
+        <div class="inline">${telLink(f.tenant_phone || f.phone)}${copyBtn(f.tenant_phone || f.phone)}</div>
+      </div>`).join('')}</div>`;
+    return;
+  }
+  const groups = [];
+  rows.forEach(f => { const head = 'Block ' + f.block;
+    let g = groups[groups.length-1];
+    if (!g || g.head !== head) groups.push(g = {head, items:[]});
+    g.items.push(f); });
 
-  $('flatCards').innerHTML = grouped().map(g => `
-    <div class="blockhead">${esc(g.head)}</div>
-    ${g.flats.map(f => f.is_common ? `
-      <div class="flatcard">
-        <div class="fno">—</div>
-        <div class="parties"><div class="party">
-          <div class="tag">${esc(f.flat_no)}</div>
-          <div class="pn">${esc(f.owner_name || 'Common meter')}</div>
-          <div><span class="none">committee responsibility</span></div>
-        </div></div>
-        <div class="meta">${f.meter_no ? 'Meter '+esc(f.meter_no) : ''}</div>
-      </div>` : `
+  $('flatCards').innerHTML = groups.map(g => `
+    <div class="sectionhead">${esc(g.head)}</div>
+    ${g.items.map(f => `
       <div class="flatcard">
         <div class="fno">${esc(f.flat_no)}</div>
         <div class="parties">
-          ${party('Owner',  f.owner_name,  f.phone,        f.owner_nid_path,  f)}
-          ${party('Tenant', f.tenant_name, f.tenant_phone, f.tenant_nid_path, f)}
+          ${partyHtml('Owner',  f.owner_name,  f.phone,        f.owner_nid_path,  f)}
+          ${partyHtml('Tenant', f.tenant_name, f.tenant_phone, f.tenant_nid_path, f)}
         </div>
-        <div class="meta">${f.tenant_name ? 'Rented' : 'Owner occupied'}
-          ${f.meter_no ? '<br>Meter '+esc(f.meter_no) : ''}</div>
+        <div class="side">
+          <span class="badge ${f.tenant_name?'rented':''}">${f.tenant_name?'Rented':'Owner occupied'}</span>
+          ${f.meter_no ? `<span class="mono-sm">Meter ${esc(f.meter_no)}</span>` : ''}
+        </div>
       </div>`).join('')}`).join('');
 }
 
-/* ---------------- my flat ---------------- */
+/* ===== file pickers ================================================ */
+function wireFilePicker(inputId){
+  const input = $(inputId), card = $('fc-' + inputId);
+  const chosen = card.querySelector('.chosen');
+  input.addEventListener('change', () => {
+    const f = input.files[0];
+    if (!f){ chosen.classList.add('hidden'); card.classList.remove('has'); return; }
+    if (f.size > 5*1024*1024){
+      toast('That file is over 5 MB — take the photo at a smaller size.', 'err');
+      input.value = ''; chosen.classList.add('hidden'); card.classList.remove('has'); return;
+    }
+    card.classList.add('has');
+    chosen.classList.remove('hidden');
+    const isImg = f.type.startsWith('image/');
+    chosen.innerHTML = `
+      ${isImg ? `<img class="thumb" alt="" src="${URL.createObjectURL(f)}">`
+              : '<span style="font-size:22px" aria-hidden="true">▤</span>'}
+      <span class="fn">${esc(f.name)}</span>
+      <span class="mono-sm">${kb(f.size)}</span>
+      <button class="btn quiet sm" type="button" data-clear="${inputId}">remove</button>`;
+    if (inputId !== 'upFile') markDirty();
+    if (inputId === 'upFile') renderUploadSummary();
+  });
+}
+['dOwnerNid','dTenantNid','upFile'].forEach(wireFilePicker);
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-clear]'); if (!t) return;
+  const input = $(t.dataset.clear);
+  input.value = ''; input.dispatchEvent(new Event('change'));
+});
+
+/* ===== my flat ===================================================== */
+function markDirty(){
+  dirty = true;
+  $('dSave').disabled = false;
+  $('dSave').textContent = 'Save details';
+  $('dirtyNote').textContent = 'You have unsaved changes.';
+}
+['dOwnerName','dOwnerPhone','dTenantName','dTenantPhone'].forEach(id =>
+  $(id).addEventListener('input', markDirty));
+$('ownerOccupied').addEventListener('change', () => {
+  const on = $('ownerOccupied').checked;
+  $('tenantFields').style.opacity = on ? .45 : 1;
+  $('tenantNidField').style.opacity = on ? .45 : 1;
+  ['dTenantName','dTenantPhone','dTenantNid'].forEach(id => $(id).disabled = on);
+  if (on){ $('dTenantName').value = ''; $('dTenantPhone').value = ''; }
+  markDirty();
+});
+
 async function loadMine(){
   const f = myFlat();
   if (!f){
-    $('mineTitle').textContent = 'My flat';
     $('mineDetails').classList.add('hidden');
-    $('mineUpload').classList.add('hidden');
-    $('mineRows').innerHTML = '<div class="empty">Your login is not linked to a flat yet. Ask the committee to link it.</div>';
+    $('mineUpload').closest('.block').classList.add('hidden');
+    banner($('mineAlert'),
+      'Your login is not linked to a flat yet, so there is nothing to show here. Ask the committee to link it.',
+      'info');
+    $('mineRows').innerHTML = '';
     return;
   }
+  banner($('mineAlert'), '');
   $('mineTitle').textContent = 'Flat ' + f.flat_no;
+  $('mineSub').textContent = (f.tenant_name ? 'Rented' : 'Owner occupied')
+    + (f.meter_no ? ' · meter ' + f.meter_no : '');
   $('dOwnerName').value  = f.owner_name   || '';
   $('dOwnerPhone').value = f.phone        || '';
   $('dTenantName').value = f.tenant_name  || '';
   $('dTenantPhone').value= f.tenant_phone || '';
-  toggleDoc('dOwnerNidView',  f.owner_nid_path);
-  toggleDoc('dTenantNidView', f.tenant_nid_path);
+  $('ownerOccupied').checked = !f.tenant_name && !f.tenant_phone;
+  $('tenantFields').style.opacity = $('ownerOccupied').checked ? .45 : 1;
+  ['dTenantName','dTenantPhone','dTenantNid'].forEach(id => $(id).disabled = $('ownerOccupied').checked);
+  showStored('dOwnerNidView',  f.owner_nid_path);
+  showStored('dTenantNidView', f.tenant_nid_path);
+  dirty = false; $('dSave').disabled = true; $('dSave').textContent = 'Saved'; $('dirtyNote').textContent = '';
 
-  const { data: bills } = await sb.from('bills').select('*')
+  const filled = ['owner_name','phone','owner_nid_path'].filter(k => f[k]).length
+    + ($('ownerOccupied').checked ? 3
+       : ['tenant_name','tenant_phone','tenant_nid_path'].filter(k => f[k]).length);
+  const outOf = $('ownerOccupied').checked ? 3 : 6;
+  const done  = $('ownerOccupied').checked ? filled - 3 : filled;
+  $('completion').textContent = `${done} of ${outOf} details completed`
+    + (done < outOf ? ' — anything missing is highlighted below.' : ' — nothing missing.');
+
+  $('mineRows').innerHTML = '<div class="skel skelrow"></div>'.repeat(3);
+  const { data: bills, error } = await sb.from('bills').select('*')
     .eq('flat_id', f.id).order('period', {ascending:false});
+  if (error){ banner($('mineRows'), 'Could not load your bills.', 'err'); return; }
+
+  const cur = (bills||[]).find(b => b.period === $('upPeriod').value);
+  renderRejectNotice(bills || []);
+  renderUploadSummary(cur);
 
   $('mineRows').innerHTML = (bills||[]).length ? bills.map(b => `
     <div class="row">
-      <span class="no">${esc(b.period)}</span>
-      <div class="nm"><span class="amt">${money(b.amount)}</span>
-      ${b.admin_note ? `<small>${esc(b.admin_note)}</small>` : ''}</div>
-      <span class="chip ${b.status}">${esc(LABEL[b.status])}</span>
-      ${b.receipt_path ? `<button class="btn ghost sm" data-receipt="${esc(b.receipt_path)}">View copy</button>` : ''}
-    </div>`).join('') : '<div class="empty">No bills recorded yet.</div>';
+      <span class="no" style="min-width:104px">${esc(monthLabel(b.period))}</span>
+      <div class="nm"><b>${money(b.amount)}</b>
+        ${b.admin_note ? `<small>${esc(b.admin_note)}</small>`
+          : (b.updated_at ? `<small>updated ${esc(ago(b.updated_at))}</small>` : '')}</div>
+      ${pill(b.status)}
+      ${b.receipt_path ? `<button class="btn ghost sm" data-preview="receipts|${esc(b.receipt_path)}">View</button>` : ''}
+    </div>`).join('')
+    : `<div class="empty"><span class="big" aria-hidden="true">▤</span>
+       <div class="t">No bills yet</div>
+       <div>Once the committee opens a billing month, it appears here.</div></div>`;
 }
 
-function toggleDoc(btnId, path){
+function showStored(btnId, path){
   const b = $(btnId);
   b.classList.toggle('hidden', !path);
-  if (path) b.dataset.doc = path;
+  if (path) b.dataset.preview = 'documents|' + path;
 }
+
+function renderRejectNotice(bills){
+  const r = bills.find(b => b.status === 'rejected');
+  banner($('rejectNotice'), r
+    ? `<b>${esc(monthLabel(r.period))} was sent back.</b> ${esc(r.admin_note || 'Please upload a clearer copy.')}`
+    : '', 'warn');
+}
+
+$('upPeriod').onchange = () => loadMine();
+
+function renderUploadSummary(cur){
+  const period = $('upPeriod').value, file = $('upFile').files[0];
+  const existing = cur !== undefined ? cur : null;
+  $('upPeriodNote').textContent = period ? monthLabel(period) : '';
+  if (!file || !period){ $('upSummary').innerHTML = ''; return; }
+  const replacing = existing && existing.receipt_path;
+  $('upSummary').innerHTML = `
+    <div class="msg info"><span class="ic" aria-hidden="true">i</span>
+      <span>Submitting <b>${esc(file.name)}</b> for <b>${esc(monthLabel(period))}</b>.
+      ${replacing ? 'This replaces the copy already on file for that month and sends it back for review.'
+                  : 'The committee will review it.'}</span></div>`;
+}
+$('upFile').addEventListener('change', () => renderUploadSummary());
+
+$('dSave').onclick = () => busy($('dSave'), 'Saving…', async () => {
+  document.querySelectorAll('[data-err]').forEach(e => e.classList.add('hidden'));
+  let bad = false;
+  [['dOwnerPhone'],['dTenantPhone']].forEach(([id]) => {
+    const ok = PHONE_OK($(id).value.trim());
+    $(id).setAttribute('aria-invalid', String(!ok));
+    const e = document.querySelector(`[data-err="${id}"]`);
+    if (!ok){ e.textContent = 'Use digits, spaces, + or -.'; e.classList.remove('hidden'); bad = true; }
+  });
+  if (bad){ toast('Check the highlighted fields', 'err'); return; }
+
+  try {
+    const oo = $('ownerOccupied').checked;
+    const patch = {
+      owner_name:   $('dOwnerName').value.trim()  || null,
+      phone:        $('dOwnerPhone').value.trim() || null,
+      tenant_name:  oo ? null : ($('dTenantName').value.trim() || null),
+      tenant_phone: oo ? null : ($('dTenantPhone').value.trim()|| null)
+    };
+    const o = await uploadDoc($('dOwnerNid'),  'owner');   if (o) patch.owner_nid_path = o;
+    const t = oo ? null : await uploadDoc($('dTenantNid'), 'tenant'); if (t) patch.tenant_nid_path = t;
+
+    const { error } = await sb.from('flats').update(patch).eq('id', ME.flat_id);
+    if (error) throw error;
+
+    $('dOwnerNid').value = ''; $('dTenantNid').value = '';
+    document.querySelectorAll('.filecard .chosen').forEach(c => c.classList.add('hidden'));
+    document.querySelectorAll('.filecard').forEach(c => c.classList.remove('has'));
+    await loadCore(); renderDirectory(); await loadMine();
+    toast('Details saved');
+  } catch (e){
+    console.error(e);
+    banner($('mineAlert'), 'Could not save: ' + esc(e.message || e), 'err');
+    toast('Save failed', 'err');
+  }
+});
 
 async function uploadDoc(input, who){
   const file = input.files[0];
   if (!file) return null;
-  if (file.size > 5*1024*1024) throw new Error('That file is over 5 MB. Take the photo again at a smaller size.');
   const safe = file.name.replace(/[^\w.\-]/g,'_');
   const path = `${ME.flat_id}/nid/${who}_${Date.now()}_${safe}`;
   const { error } = await sb.storage.from('documents').upload(path, file);
@@ -547,192 +1531,387 @@ async function uploadDoc(input, who){
   return path;
 }
 
-$('dSave').onclick = async () => {
-  const box = $('mineMsg'); msg(box,''); $('dSave').disabled = true;
-  try {
-    const patch = {
-      owner_name:   $('dOwnerName').value.trim()  || null,
-      phone:        $('dOwnerPhone').value.trim() || null,
-      tenant_name:  $('dTenantName').value.trim() || null,
-      tenant_phone: $('dTenantPhone').value.trim()|| null
-    };
-    const o = await uploadDoc($('dOwnerNid'),  'owner');
-    if (o) patch.owner_nid_path = o;
-    const t = await uploadDoc($('dTenantNid'), 'tenant');
-    if (t) patch.tenant_nid_path = t;
-
-    const { error } = await sb.from('flats').update(patch).eq('id', ME.flat_id);
-    if (error) throw error;
-
-    $('dOwnerNid').value = ''; $('dTenantNid').value = '';
-    await refreshFlats();
-    renderDirectory(); loadMine();
-    msg(box, 'Details saved.', 'ok');
-  } catch (e) {
-    msg(box, e.message || String(e));
-  }
-  $('dSave').disabled = false;
-};
-
-$('upBtn').onclick = async () => {
+$('upBtn').onclick = () => busy($('upBtn'), 'Uploading…', async () => {
   const file = $('upFile').files[0], period = $('upPeriod').value;
-  const box = $('mineMsg');
-  if (!file)   return msg(box, 'Choose the bill copy first.');
-  if (!period) return msg(box, 'Pick which month this bill is for.');
-  if (file.size > 5*1024*1024) return msg(box, 'That file is over 5 MB. Take the photo again at a smaller size.');
+  if (!file)   return toast('Choose the bill copy first', 'err');
+  if (!period) return toast('Pick which month this bill is for', 'err');
 
-  $('upBtn').disabled = true; msg(box,'');
+  const { data: existing } = await sb.from('bills').select('id,receipt_path,status')
+    .eq('flat_id', ME.flat_id).eq('period', period).maybeSingle();
+
+  if (existing && existing.status === 'verified'){
+    const go = await confirmDialog({ title:'Already verified',
+      body:`<p style="margin:0">${esc(monthLabel(period))} has already been verified by the committee.
+        Uploading again will move it back to awaiting review.</p>`,
+      confirmText:'Upload anyway' });
+    if (!go) return;
+  }
+
   const safe = file.name.replace(/[^\w.\-]/g,'_');
   const path = `${ME.flat_id}/${period}/${Date.now()}_${safe}`;
-
   const { error: upErr } = await sb.storage.from('receipts').upload(path, file);
-  if (upErr){ $('upBtn').disabled = false; return msg(box, 'Upload failed: ' + upErr.message); }
-
-  const { data: existing } = await sb.from('bills').select('id')
-    .eq('flat_id', ME.flat_id).eq('period', period).maybeSingle();
+  if (upErr) return toast('Upload failed: ' + upErr.message, 'err');
 
   const err = existing
     ? (await sb.from('bills').update({status:'submitted', receipt_path:path}).eq('id', existing.id)).error
     : (await sb.from('bills').insert({flat_id:ME.flat_id, period, status:'submitted', receipt_path:path})).error;
+  if (err) return toast('Saved the file but could not update the bill: ' + err.message, 'err');
 
-  $('upBtn').disabled = false;
-  if (err) return msg(box, 'Saved the file but could not update the bill: ' + err.message);
-  $('upFile').value = '';
-  msg(box, 'Bill copy uploaded. The committee will check it.', 'ok');
-  loadMine(); loadBoard();
-};
-
-/* open a private file through a short-lived signed link */
-async function openSigned(bucket, path, btn){
-  btn.disabled = true;
-  const { data, error } = await sb.storage.from(bucket).createSignedUrl(path, 120);
-  btn.disabled = false;
-  if (error) return alert('Could not open that file: ' + error.message);
-  window.open(data.signedUrl, '_blank', 'noopener');
-}
-document.addEventListener('click', e => {
-  const r = e.target.closest('[data-receipt]');
-  if (r) return openSigned('receipts', r.dataset.receipt, r);
-  const d = e.target.closest('[data-doc]');
-  if (d) return openSigned('documents', d.dataset.doc, d);
+  $('upFile').value = ''; $('upFile').dispatchEvent(new Event('change'));
+  toast('Bill copy submitted for review');
+  await loadMine(); await loadBoard();
+  if (ME.role === 'admin') await loadAdmin();
 });
 
-/* ---------------- committee ---------------- */
-$('genBtn').onclick = async () => {
-  const period = $('genPeriod').value, amount = $('genAmount').value, common = $('genCommon').value;
-  if (!period) return msg($('genMsg'), 'Pick a month.');
-  $('genBtn').disabled = true;
-  const { data, error } = await sb.rpc('create_period_bills', {
-    p_period: period,
-    p_amount: amount === '' ? null : Number(amount),
-    p_common_amount: common === '' ? null : Number(common) });
-  $('genBtn').disabled = false;
-  msg($('genMsg'), error ? error.message : `${data} new bill lines created for ${period}.`,
-      error ? 'err' : 'ok');
-  loadBoard(); loadAdmin();
-};
-
+/* ===== committee =================================================== */
 async function loadAdmin(){
-  const flatName = id => (FLATS.find(f => f.id === id) || {}).flat_no || id;
+  $('queueRows').innerHTML = '<div class="skel skelrow"></div>'.repeat(3);
+  const [{ data: q }, { data: users }] = await Promise.all([
+    sb.from('bills').select('*').eq('status','submitted'),
+    sb.from('profiles').select('*')
+  ]);
+  QUEUE = q || []; USERS = users || [];
 
-  const { data: queue } = await sb.from('bills').select('*')
-    .eq('status','submitted').order('period',{ascending:false});
-  $('queueRows').innerHTML = (queue||[]).length ? queue.map(b => `
+  const periods = [...new Set(QUEUE.map(b => b.period))].sort().reverse();
+  $('qPeriod').innerHTML = '<option value="">All months</option>' +
+    periods.map(p => `<option value="${esc(p)}"${F.qPeriod===p?' selected':''}>${esc(monthLabel(p))}</option>`).join('');
+
+  const nav = $('navCount');
+  nav.textContent = QUEUE.length;
+  nav.classList.toggle('hidden', QUEUE.length === 0);
+
+  const all = FLATS.filter(f => !f.is_common);
+  const period = $('period').value;
+  const ver = all.filter(f => BILLS[f.id] && BILLS[f.id].status === 'verified').length;
+  const rej = QUEUE.length ? 0 : 0;
+  const { count: rejCount } = await sb.from('bills')
+    .select('id', {count:'exact', head:true}).eq('status','rejected');
+  const unlinked = USERS.filter(u => !u.flat_id && u.role !== 'admin').length;
+
+  $('adminMetrics').innerHTML = `
+    <button class="metric warn" id="mQueue"><b>${QUEUE.length}</b>
+      <span class="k">Awaiting review</span><span class="d">uploads needing a decision</span></button>
+    <div class="metric bad"><b>${all.length - ver}</b>
+      <span class="k">Action needed</span><span class="d">flats not verified for ${esc(monthLabel(period))}</span></div>
+    <div class="metric ok"><b>${Math.round(ver/(all.length||1)*100)}%</b>
+      <span class="k">Coverage</span><span class="d">${ver} of ${all.length} verified</span></div>
+    <div class="metric neutral"><b>${rejCount || 0}</b>
+      <span class="k">Sent back</span><span class="d">${unlinked} account${unlinked===1?'':'s'} unlinked</span></div>`;
+  $('mQueue').onclick = () => $('queueRows').scrollIntoView({behavior:'smooth', block:'center'});
+
+  renderQueue(); renderAdminFlats(); renderUsers();
+}
+
+function queueRows(){
+  const name = id => (FLATS.find(f => f.id === id) || {}).flat_no || String(id);
+  let rows = QUEUE.filter(b => {
+    if (F.qPeriod && b.period !== F.qPeriod) return false;
+    if (F.qSearch && !name(b.flat_id).toLowerCase().includes(F.qSearch)) return false;
+    return true;
+  });
+  const t = b => new Date(b.submitted_at || b.updated_at || 0).getTime();
+  if (F.qSort === 'old')  rows.sort((a,b) => t(a) - t(b));
+  if (F.qSort === 'new')  rows.sort((a,b) => t(b) - t(a));
+  if (F.qSort === 'flat') rows.sort((a,b) => name(a.flat_id).localeCompare(name(b.flat_id), undefined, {numeric:true}));
+  return rows;
+}
+
+function renderQueue(){
+  const rows = queueRows();
+  const name = id => (FLATS.find(f => f.id === id) || {}).flat_no || String(id);
+  if (!rows.length){
+    $('queueRows').innerHTML = `<div class="empty"><span class="big" aria-hidden="true">✓</span>
+      <div class="t">${QUEUE.length ? 'Nothing matches those filters' : 'The queue is clear'}</div>
+      <div>${QUEUE.length ? 'Try a different month or search.' : 'Uploads from residents appear here for review.'}</div></div>`;
+    return;
+  }
+  $('queueRows').innerHTML = rows.map((b, i) => `
     <div class="row">
-      <span class="no">${esc(flatName(b.flat_id))}</span>
-      <div class="nm">${esc(b.period)} · <span class="amt">${money(b.amount)}</span></div>
-      <div class="split">
-        ${b.receipt_path ? `<button class="btn ghost sm" data-receipt="${esc(b.receipt_path)}">View copy</button>` : '<span class="chip">no file</span>'}
-        <button class="btn sm" data-verify="${b.id}">Verify</button>
-        <button class="btn ghost sm" data-reject="${b.id}">Send back</button>
-      </div>
-    </div>`).join('') : '<div class="empty">Nothing waiting. Uploads show up here.</div>';
-
-  $('adminFlatRows').innerHTML = grouped().map(g => `
-    <div class="blockhead">${esc(g.head)}</div>
-    ${g.flats.map(f => `
-      <div class="flatcard" style="display:block">
-        <div class="split" style="margin-bottom:8px">
-          <span class="fno">${esc(f.flat_no)}</span>
-          <input data-fld="meter_no" data-flat="${f.id}" value="${esc(f.meter_no||'')}"
-                 placeholder="Meter no" style="width:130px">
-          ${f.owner_nid_path ? `<button class="btn ghost sm" data-doc="${esc(f.owner_nid_path)}">Owner NID</button>` : ''}
-          ${f.tenant_nid_path ? `<button class="btn ghost sm" data-doc="${esc(f.tenant_nid_path)}">Tenant NID</button>` : ''}
-          <button class="btn sm" data-saveflat="${f.id}" style="margin-left:auto">Save</button>
-        </div>
-        ${f.is_common ? '' : `
-        <div class="two">
-          <div class="field" style="margin-bottom:8px">
-            <input data-fld="owner_name" data-flat="${f.id}" value="${esc(f.owner_name||'')}" placeholder="Owner name">
-          </div>
-          <div class="field" style="margin-bottom:8px">
-            <input data-fld="phone" data-flat="${f.id}" value="${esc(f.phone||'')}" placeholder="Owner phone">
-          </div>
-          <div class="field" style="margin-bottom:0">
-            <input data-fld="tenant_name" data-flat="${f.id}" value="${esc(f.tenant_name||'')}" placeholder="Tenant name">
-          </div>
-          <div class="field" style="margin-bottom:0">
-            <input data-fld="tenant_phone" data-flat="${f.id}" value="${esc(f.tenant_phone||'')}" placeholder="Tenant phone">
-          </div>
-        </div>`}
-      </div>`).join('')}`).join('');
-
-  const { data: users } = await sb.from('profiles').select('*');
-  $('userRows').innerHTML = (users||[]).map(u => `
-    <div class="row">
-      <div class="nm">${esc(u.full_name||u.id.slice(0,8))}
-        <small>${u.role === 'admin' ? 'Committee' : 'Resident'}</small></div>
-      <select data-user="${u.id}" style="width:170px">
-        <option value="">— no flat —</option>
-        ${FLATS.map(f => `<option value="${f.id}"${f.id===u.flat_id?' selected':''}>${esc(f.flat_no)}</option>`).join('')}
-      </select>
-      <button class="btn sm" data-saveuser="${u.id}">Link</button>
+      <span class="no">${esc(name(b.flat_id))}</span>
+      <div class="nm"><b>${esc(monthLabel(b.period))}</b>
+        <small>${money(b.amount)}${b.submitted_at ? ' · submitted ' + esc(ago(b.submitted_at)) : ''}</small></div>
+      <button class="btn sm" data-review="${i}">Review</button>
     </div>`).join('');
+}
+$('queueRows').addEventListener('click', e => {
+  const t = e.target.closest('[data-review]'); if (!t) return;
+  openReview(Number(t.dataset.review));
+});
+
+async function openReview(idx){
+  const rows = queueRows();
+  const b = rows[idx]; if (!b) return;
+  const f = FLATS.find(x => x.id === b.flat_id) || {flat_no:'?'};
+
+  layer('drawer', `
+    <div class="dhead">
+      <div><h3>${esc(f.flat_no)} · ${esc(monthLabel(b.period))}</h3>
+        <div style="margin-top:5px">${pill('submitted')}
+        <span class="mono-sm" style="margin-left:6px">${idx+1} of ${rows.length}</span></div></div>
+      <button class="x" data-close aria-label="Close">×</button>
+    </div>
+    <div class="dbody">
+      <dl class="kv">
+        <dt>Amount</dt><dd>${money(b.amount)}</dd>
+        <dt>Owner</dt><dd>${esc(f.owner_name || '—')}</dd>
+        ${f.tenant_name ? `<dt>Tenant</dt><dd>${esc(f.tenant_name)}</dd>` : ''}
+        <dt>Submitted</dt><dd>${esc(dateTime(b.submitted_at) || '—')}</dd>
+      </dl>
+      <div id="revPreview" style="margin-top:14px">
+        ${b.receipt_path ? '<div class="skel" style="height:240px"></div>'
+          : '<div class="msg warn"><span class="ic">▲</span><span>No file was attached to this submission.</span></div>'}
+      </div>
+    </div>
+    <div class="dfoot">
+      <div class="left">
+        <button class="btn ghost" data-nav="${idx-1}" ${idx===0?'disabled':''}>‹ Previous</button>
+        <button class="btn ghost" data-nav="${idx+1}" ${idx>=rows.length-1?'disabled':''}>Next ›</button>
+      </div>
+      <button class="btn ghost" data-decide="reject|${b.id}">Send back</button>
+      <button class="btn" data-decide="verify|${b.id}">Verify</button>
+    </div>`);
+
+  if (b.receipt_path){
+    const { data, error } = await sb.storage.from('receipts').createSignedUrl(b.receipt_path, 300);
+    $('revPreview').innerHTML = error
+      ? `<div class="msg err"><span class="ic">!</span><span>Could not load the copy.</span></div>`
+      : (/\.pdf$/i.test(b.receipt_path)
+          ? `<iframe class="preview" src="${data.signedUrl}" title="Bill copy"></iframe>`
+          : `<img class="preview" src="${data.signedUrl}" alt="Bill copy for ${esc(f.flat_no)}">`)
+        + `<a class="btn ghost sm" href="${error?'#':data.signedUrl}" target="_blank" rel="noopener"
+             style="margin-top:8px">Open full size</a>`;
+  }
+  openLayer.node.querySelectorAll('[data-nav]').forEach(btn => btn.onclick = () => {
+    const n = Number(btn.dataset.nav);
+    if (n >= 0 && n < rows.length) openReview(n);
+  });
 }
 
 document.addEventListener('click', async e => {
-  const t = e.target;
+  const t = e.target.closest('[data-decide],[data-verify],[data-reject]'); if (!t) return;
+  let action, id;
+  if (t.dataset.decide) [action, id] = t.dataset.decide.split('|');
+  else if (t.dataset.verify){ action = 'verify'; id = t.dataset.verify; }
+  else { action = 'reject'; id = t.dataset.reject; }
 
-  if (t.dataset.verify || t.dataset.reject){
-    const id = t.dataset.verify || t.dataset.reject;
-    const verify = !!t.dataset.verify;
-    let note = null;
-    if (!verify){ note = prompt('What should the resident fix?', 'Copy is not readable — please upload again.'); if (note === null) return; }
-    t.disabled = true;
-    const { error } = await sb.from('bills').update(verify
-      ? { status:'verified', verified_at:new Date().toISOString(), verified_by:ME.id, admin_note:null }
-      : { status:'rejected', admin_note:note }).eq('id', id);
-    if (error) alert(error.message);
-    loadAdmin(); loadBoard();
-  }
+  const bill = QUEUE.find(b => String(b.id) === String(id))
+            || Object.values(BILLS).find(b => String(b.id) === String(id));
+  const f = bill ? FLATS.find(x => x.id === bill.flat_id) : null;
+  const where = f ? `${f.flat_no}, ${monthLabel(bill.period)}` : 'this bill';
 
-  if (t.dataset.saveflat){
-    const id = t.dataset.saveflat;
-    const patch = {};
-    document.querySelectorAll(`[data-flat="${id}"]`).forEach(i => {
-      patch[i.dataset.fld] = i.value.trim() || null;
+  const res = action === 'verify'
+    ? await confirmDialog({ title:'Verify this bill?',
+        body:`<p style="margin:0">Mark <b>${esc(where)}</b> as verified. This is recorded against your name
+          and the resident will see it immediately.</p>`,
+        confirmText:'Verify' })
+    : await confirmDialog({ title:'Send this back?',
+        body:`<p style="margin:0">The resident for <b>${esc(where)}</b> will be asked to upload again.</p>`,
+        confirmText:'Send back', danger:true, noteLabel:'Reason (shown to the resident)',
+        noteRequired:true, notePlaceholder:'e.g. the photo is blurred — please retake it' });
+  if (!res) return;
+
+  const patch = action === 'verify'
+    ? { status:'verified', verified_at:new Date().toISOString(), verified_by:ME.id, admin_note:null }
+    : { status:'rejected', admin_note:res.note };
+  const { error } = await sb.from('bills').update(patch).eq('id', id);
+  if (error) return toast(error.message, 'err');
+
+  toast(action === 'verify' ? 'Verified' : 'Sent back to the resident');
+  closeLayer();
+  await loadBoard(); await loadAdmin(); await loadMine();
+});
+
+/* ----- billing month ----- */
+$('genBtn').onclick = () => busy($('genBtn'), 'Checking…', async () => {
+  const period = $('genPeriod').value;
+  const amount = $('genAmount').value, common = $('genCommon').value;
+  if (!period) return toast('Pick a month', 'err');
+  if (amount === '') return toast('Enter the amount per flat', 'err');
+
+  const { data: pv, error } = await sb.rpc('preview_period_bills', { p_period: period });
+  if (error) return toast(error.message, 'err');
+  const p = (pv && pv[0]) || {total_flats:0, already_open:0, would_create:0};
+
+  const go = await confirmDialog({
+    title:'Create billing month',
+    body:`<dl class="kv">
+        <dt>Month</dt><dd><b>${esc(monthLabel(period))}</b></dd>
+        <dt>Per flat</dt><dd>${money(Number(amount))}</dd>
+        <dt>Master meter</dt><dd>${common === '' ? '<span class="none-txt">skipped</span>' : money(Number(common))}</dd>
+        <dt>New lines</dt><dd><b>${p.would_create}</b> of ${p.total_flats} flats</dd>
+      </dl>
+      ${p.already_open > 0 ? `<div class="msg warn" style="margin-top:12px">
+        <span class="ic">▲</span><span>${p.already_open} flat${p.already_open===1?'':'s'} already
+        ${p.already_open===1?'has':'have'} a line for this month. Those are left untouched —
+        existing amounts and uploads are not overwritten.</span></div>` : ''}
+      ${p.would_create === 0 ? `<div class="msg info" style="margin-top:12px">
+        <span class="ic">i</span><span>Nothing new would be created.</span></div>` : ''}`,
+    confirmText: p.would_create === 0 ? 'Close' : 'Create ' + p.would_create + ' lines'
+  });
+  if (!go || p.would_create === 0) return;
+
+  const { data, error: e2 } = await sb.rpc('create_period_bills', {
+    p_period: period,
+    p_amount: Number(amount),
+    p_common_amount: common === '' ? null : Number(common) });
+  if (e2) return toast(e2.message, 'err');
+  toast(`${data} bill lines created for ${monthLabel(period)}`);
+  $('period').value = period;
+  await loadBoard(); await loadAdmin();
+});
+
+/* ----- flat records ----- */
+function renderAdminFlats(){
+  const groups = [];
+  FLATS.forEach(f => { const head = f.is_common ? 'Common areas' : 'Block ' + f.block;
+    let g = groups[groups.length-1];
+    if (!g || g.head !== head) groups.push(g = {head, items:[]});
+    g.items.push(f); });
+
+  $('adminFlatRows').innerHTML = groups.map((g, gi) => `
+    <details class="accordion" ${gi===0?'open':''}>
+      <summary class="head"><span class="arrow" aria-hidden="true">›</span>
+        ${esc(g.head)} <span class="mono-sm">${g.items.length}</span></summary>
+      <div class="body">${g.items.map(f => `
+        <div class="row">
+          <span class="no">${esc(f.flat_no)}</span>
+          <div class="nm">
+            <b>${esc(f.owner_name || (f.is_common ? 'Committee' : '—'))}</b>
+            <small>${f.is_common ? 'stairs, lift and garage'
+              : (f.tenant_name ? 'Tenant: ' + esc(f.tenant_name) : 'Owner occupied')}</small>
+          </div>
+          <input data-meter="${f.id}" value="${esc(f.meter_no || '')}" placeholder="Meter no"
+                 aria-label="Meter number for ${esc(f.flat_no)}" style="width:118px">
+          <button class="btn ghost sm" data-savemeter="${f.id}">Save</button>
+          ${f.is_common ? '' : `<button class="btn sm" data-editflat="${f.id}">Edit</button>`}
+        </div>`).join('')}</div>
+    </details>`).join('');
+}
+
+$('adminFlatRows').addEventListener('click', async e => {
+  const sm = e.target.closest('[data-savemeter]');
+  if (sm){
+    const id = sm.dataset.savemeter;
+    const v = document.querySelector(`[data-meter="${id}"]`).value.trim() || null;
+    await busy(sm, '', async () => {
+      const { error } = await sb.from('flats').update({meter_no:v}).eq('id', id);
+      if (error) return toast(error.message, 'err');
+      const f = FLATS.find(x => String(x.id) === String(id)); if (f) f.meter_no = v;
+      toast('Meter number saved'); renderDirectory();
     });
-    t.disabled = true;
-    const { error } = await sb.from('flats').update(patch).eq('id', id);
-    t.disabled = false;
-    if (error) return alert(error.message);
-    t.textContent = 'Saved';
-    setTimeout(() => { t.textContent = 'Save'; }, 1500);
-    await refreshFlats();
-    renderDirectory();
+    return;
   }
+  const ef = e.target.closest('[data-editflat]');
+  if (ef) openFlatEditor(Number(ef.dataset.editflat));
+});
 
-  if (t.dataset.saveuser){
-    const id = t.dataset.saveuser;
-    const sel = document.querySelector(`select[data-user="${id}"]`).value;
-    t.disabled = true;
+function openFlatEditor(id){
+  const f = FLATS.find(x => x.id === id); if (!f) return;
+  layer('drawer', `
+    <div class="dhead"><h3>Edit ${esc(f.flat_no)}</h3>
+      <button class="x" data-close aria-label="Close">×</button></div>
+    <div class="dbody">
+      <div class="sectionhead" style="margin-top:0">Owner</div>
+      <div class="field"><label for="efOwner">Name</label>
+        <input id="efOwner" value="${esc(f.owner_name||'')}"></div>
+      <div class="field"><label for="efPhone">Phone</label>
+        <input id="efPhone" type="tel" value="${esc(f.phone||'')}">
+        <div class="err hidden" id="efPhoneErr">Use digits, spaces, + or -.</div></div>
+      <div class="sectionhead">Tenant</div>
+      <div class="field"><label for="efTName">Name</label>
+        <input id="efTName" value="${esc(f.tenant_name||'')}" placeholder="Leave blank if owner occupied"></div>
+      <div class="field"><label for="efTPhone">Phone</label>
+        <input id="efTPhone" type="tel" value="${esc(f.tenant_phone||'')}">
+        <div class="err hidden" id="efTPhoneErr">Use digits, spaces, + or -.</div></div>
+      <div class="sectionhead">Identification</div>
+      <div class="inline">
+        ${f.owner_nid_path ? `<button class="btn ghost sm" data-preview="documents|${esc(f.owner_nid_path)}">Owner NID</button>`
+                           : '<span class="none-txt">No owner NID on file</span>'}
+        ${f.tenant_nid_path ? `<button class="btn ghost sm" data-preview="documents|${esc(f.tenant_nid_path)}">Tenant NID</button>` : ''}
+      </div>
+      <p class="privacy">Residents upload their own NID from the My flat page.
+        The committee can view them but not replace them here.</p>
+    </div>
+    <div class="dfoot">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn" id="efSave">Save changes</button>
+    </div>`);
+
+  $('efSave').onclick = () => busy($('efSave'), 'Saving…', async () => {
+    let bad = false;
+    [['efPhone','efPhoneErr'],['efTPhone','efTPhoneErr']].forEach(([i,e]) => {
+      const ok = PHONE_OK($(i).value.trim());
+      $(e).classList.toggle('hidden', ok);
+      $(i).setAttribute('aria-invalid', String(!ok));
+      if (!ok) bad = true;
+    });
+    if (bad) return;
+    const { error } = await sb.from('flats').update({
+      owner_name:   $('efOwner').value.trim()  || null,
+      phone:        $('efPhone').value.trim()  || null,
+      tenant_name:  $('efTName').value.trim()  || null,
+      tenant_phone: $('efTPhone').value.trim() || null
+    }).eq('id', id);
+    if (error) return toast(error.message, 'err');
+    await loadCore(); renderDirectory(); renderAdminFlats();
+    closeLayer(); toast(f.flat_no + ' updated');
+  });
+}
+
+/* ----- logins ----- */
+function renderUsers(){
+  const rows = USERS.filter(u => {
+    if (F.uFil === 'unlinked' && (u.flat_id || u.role === 'admin')) return false;
+    if (F.uFil === 'admin' && u.role !== 'admin') return false;
+    if (F.uSearch){
+      const hay = [u.full_name, u.email].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(F.uSearch)) return false;
+    }
+    return true;
+  });
+  if (!rows.length){
+    $('userRows').innerHTML = `<div class="empty"><div class="t">No accounts match</div></div>`;
+    return;
+  }
+  $('userRows').innerHTML = rows.map(u => {
+    const f = FLATS.find(x => x.id === u.flat_id);
+    return `<div class="row">
+      <div class="nm"><b>${esc(u.full_name || '—')}</b>
+        <small>${esc(u.email || u.id.slice(0,8))} · ${u.role === 'admin' ? 'Committee' : 'Resident'}</small></div>
+      ${f ? `<span class="badge">${esc(f.flat_no)}</span>` : '<span class="badge">unlinked</span>'}
+      <select data-user="${u.id}" aria-label="Flat for ${esc(u.full_name || u.email || '')}" style="width:150px">
+        <option value="">— no flat —</option>
+        ${FLATS.map(x => `<option value="${x.id}"${x.id===u.flat_id?' selected':''}>${esc(x.flat_no)}</option>`).join('')}
+      </select>
+      <button class="btn sm" data-saveuser="${u.id}">Link</button>
+    </div>`;
+  }).join('');
+}
+
+$('userRows').addEventListener('click', async e => {
+  const t = e.target.closest('[data-saveuser]'); if (!t) return;
+  const id = t.dataset.saveuser;
+  const sel = document.querySelector(`select[data-user="${id}"]`).value;
+  const u = USERS.find(x => x.id === id);
+  const f = FLATS.find(x => String(x.id) === sel);
+
+  const go = await confirmDialog({ title:'Link this account',
+    body:`<dl class="kv">
+      <dt>Account</dt><dd>${esc(u.full_name || u.email || id)}</dd>
+      <dt>Email</dt><dd>${esc(u.email || '—')}</dd>
+      <dt>Flat</dt><dd><b>${f ? esc(f.flat_no) : 'none — unlink'}</b></dd></dl>
+      <p class="help" style="margin-top:12px">The account will be able to edit that flat's details
+      and upload its bills.</p>`,
+    confirmText:'Link account' });
+  if (!go) return;
+
+  await busy(t, '', async () => {
     const { error } = await sb.from('profiles')
       .update({ flat_id: sel === '' ? null : Number(sel) }).eq('id', id);
-    t.disabled = false;
-    if (error) return alert(error.message);
-    t.textContent = 'Linked';
-    setTimeout(() => { t.textContent = 'Link'; }, 1500);
-  }
+    if (error) return toast(error.message, 'err');
+    u.flat_id = sel === '' ? null : Number(sel);
+    renderUsers(); toast('Account linked');
+  });
 });
 </script>
 </body>
