@@ -690,23 +690,18 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
       </div>
 
       <div class="block narrow">
-        <h3>Open a billing month</h3>
-        <p class="sub">Creates one empty bill line per flat. Residents then enter their own amount
-          when they upload the copy, and you confirm it during review.</p>
+        <h3>Open the month for collection</h3>
+        <p class="sub">Marks the month as due for all 30 flats, so the board can show who has paid
+          and who has not. Residents enter their own metered amount when they upload the copy.</p>
         <div class="panel">
           <div class="row2">
             <div class="field"><label for="genPeriod">Month</label>
               <input id="genPeriod" type="month">
-              <div class="help">The month the bill covers.</div></div>
-            <div class="field"><label for="genAmount">Amount per flat (optional)</label>
-              <input id="genAmount" type="number" step="0.01" min="0" placeholder="leave blank">
-              <div class="help">Leave empty — each resident enters their own metered amount
-                when they upload. Only fill this in if every flat pays an identical fixed charge.</div></div>
-          </div>
-          <div class="field">
-            <label for="genCommon">Master meter amount</label>
-            <input id="genCommon" type="number" step="0.01" min="0" placeholder="leave blank to skip">
-            <div class="help">Stairs, lift and garage. Leave empty and no line is created for it.</div>
+              <div class="help">The month the bills cover.</div></div>
+            <div class="field"><label for="genCommon">Master meter amount</label>
+              <input id="genCommon" type="number" step="0.01" min="0" placeholder="leave blank to skip">
+              <div class="help">Stairs, lift and garage — the one bill the committee settles.
+                Leave empty and no line is created for it.</div></div>
           </div>
           <div id="genPreview"></div>
           <button class="btn" id="genBtn">Review and create</button>
@@ -1934,7 +1929,7 @@ document.addEventListener('click', async e => {
 /* ----- billing month ----- */
 $('genBtn').onclick = () => busy($('genBtn'), 'Checking…', async () => {
   const period = $('genPeriod').value;
-  const amount = $('genAmount').value, common = $('genCommon').value;
+  const common = $('genCommon').value;
   if (!period) return toast('Pick a month', 'err');
 
   const { data: pv, error } = await sb.rpc('preview_period_bills', { p_period: period });
@@ -1945,9 +1940,6 @@ $('genBtn').onclick = () => busy($('genBtn'), 'Checking…', async () => {
     title:'Create billing month',
     body:`<dl class="kv">
         <dt>Month</dt><dd><b>${esc(monthLabel(period))}</b></dd>
-        <dt>Per flat</dt><dd>${amount === ''
-          ? '<span class="none-txt">blank — each resident enters their own</span>'
-          : money(Number(amount))}</dd>
         <dt>Master meter</dt><dd>${common === '' ? '<span class="none-txt">skipped</span>' : money(Number(common))}</dd>
         <dt>New lines</dt><dd><b>${p.would_create}</b> of ${p.total_flats} flats</dd>
       </dl>
@@ -1957,16 +1949,16 @@ $('genBtn').onclick = () => busy($('genBtn'), 'Checking…', async () => {
         existing amounts and uploads are not overwritten.</span></div>` : ''}
       ${p.would_create === 0 ? `<div class="msg info" style="margin-top:12px">
         <span class="ic">i</span><span>Nothing new would be created.</span></div>` : ''}`,
-    confirmText: p.would_create === 0 ? 'Close' : 'Create ' + p.would_create + ' lines'
+    confirmText: p.would_create === 0 ? 'Close' : 'Open the month for ' + p.would_create + ' flats'
   });
   if (!go || p.would_create === 0) return;
 
   const { data, error: e2 } = await sb.rpc('create_period_bills', {
     p_period: period,
-    p_amount: amount === '' ? null : Number(amount),
+    p_amount: null,
     p_common_amount: common === '' ? null : Number(common) });
   if (e2) return toast(e2.message, 'err');
-  toast(`${data} bill lines created for ${monthLabel(period)}`);
+  toast(`${monthLabel(period)} opened for ${data} flats`);
   $('period').value = period;
   await loadBoard(); await loadAdmin();
 });
