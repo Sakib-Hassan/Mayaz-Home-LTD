@@ -121,8 +121,9 @@ header .userbtn:hover{background:rgba(255,255,255,.13)}
   display:grid;place-items:center;font-size:11px;font-weight:600;font-family:var(--mono);flex:none}
 .userbtn .un{font-size:12.5px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+.topbar{position:sticky;top:0;z-index:30;box-shadow:0 1px 0 rgba(27,42,38,.06)}
 nav{background:var(--surface);border-bottom:1px solid var(--line);display:flex;gap:4px;
-  padding:7px 12px;overflow-x:auto;position:sticky;top:0;z-index:20;scrollbar-width:none}
+  padding:7px 12px;overflow-x:auto;scrollbar-width:none}
 nav::-webkit-scrollbar{display:none}
 nav button{background:none;border:1px solid transparent;color:var(--muted);
   padding:8px 13px;font-weight:500;white-space:nowrap;font-size:14px;border-radius:99px;
@@ -353,7 +354,11 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 @media (max-width:620px){
   main{padding:16px 12px 76px}
   .row2{grid-template-columns:1fr}
-  header{padding:10px 13px;gap:10px}
+  header{padding:8px 12px;gap:9px}
+  header h1{font-size:16px}
+  header .mark{width:22px;height:22px}
+  nav{padding:5px 9px}
+  nav button{padding:7px 11px;font-size:13.5px}
   header .sync .txt{display:none}
   .userbtn .un{display:none}
   .flatcard{flex-wrap:wrap;gap:10px}
@@ -419,6 +424,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 
 <!-- ==================== APP ==================== -->
 <div id="app" class="hidden">
+  <div class="topbar">
   <header>
     <div class="brand">
       <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -447,6 +453,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
     <button data-view="admin"     role="tab" aria-selected="false" class="hidden">
       Committee <span class="count hidden" id="navCount">0</span></button>
   </nav>
+  </div>
 
   <main>
     <!-- ---------- BOARD ---------- -->
@@ -630,10 +637,12 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
           </div>
           <div class="field">
             <label for="upFile">3 · Bill copy</label>
+            <div class="help" style="margin:-2px 0 7px">Add more than one if the bill runs to
+              several pages, or to include the payment receipt.</div>
             <div class="filecard" id="fc-upFile">
-              <input id="upFile" type="file" accept="image/*,application/pdf">
-              <div class="meta">JPG, PNG or PDF · up to 5 MB</div>
-              <div class="chosen hidden"></div>
+              <input id="upFile" type="file" accept="image/*,application/pdf" multiple>
+              <div class="meta">JPG, PNG or PDF · up to 5 MB each · up to 3 files</div>
+              <div id="upFileList"></div>
             </div>
           </div>
           <div id="upSummary"></div>
@@ -1260,9 +1269,10 @@ async function openFlatDrawer(flatId){
       </dl>
       ${b && b.admin_note ? `<div class="msg warn" style="margin-top:14px">
         <span class="ic" aria-hidden="true">▲</span><span><b>Committee note:</b> ${esc(b.admin_note)}</span></div>` : ''}
-      ${b && b.receipt_path && (mine || ME.role==='admin')
-        ? `<button class="btn ghost" data-preview="receipts|${esc(b.receipt_path)}" style="margin-top:6px">View bill copy</button>`
-        : (b && b.receipt_path ? '<p class="help">A copy is on file. Only that flat and the committee can open it.</p>' : '')}
+      ${filesOf(b).length && (mine || ME.role==='admin')
+        ? `<div class="inline" style="margin-top:6px">${filesOf(b).map((p, i) =>
+            `<button class="btn ghost" data-preview="receipts|${esc(p)}">Copy ${i+1}</button>`).join('')}</div>`
+        : (filesOf(b).length ? '<p class="help">Copies are on file. Only that flat and the committee can open them.</p>' : '')}
       <div id="drawerHistory"><div class="skel skelrow" style="margin-top:16px"></div></div>
     </div>
     <div class="dfoot">
@@ -1292,6 +1302,10 @@ async function openFlatDrawer(flatId){
   if (up) up.onclick = () => { closeLayer(); goTab('mine');
     setTimeout(() => $('mineUpload').scrollIntoView({behavior:'smooth', block:'center'}), 60); };
 }
+
+const filesOf = b => (b && b.receipt_paths && b.receipt_paths.length)
+  ? b.receipt_paths
+  : (b && b.receipt_path ? [b.receipt_path] : []);
 
 /* ===== previews ==================================================== */
 document.addEventListener('click', async e => {
@@ -1462,7 +1476,55 @@ function wireFilePicker(inputId){
     if (inputId === 'upFile') renderUploadSummary();
   });
 }
-['dOwnerNid','dTenantNid','upFile'].forEach(wireFilePicker);
+['dOwnerNid','dTenantNid'].forEach(wireFilePicker);
+
+/* ----- bill copy: up to three files ----- */
+const MAX_FILES = 3;
+let upFiles = [];
+
+function renderUpFiles(){
+  const box = $('upFileList'), card = $('fc-upFile');
+  card.classList.toggle('has', upFiles.length > 0);
+  box.innerHTML = upFiles.map((f, i) => `
+    <div class="chosen">
+      ${f.type.startsWith('image/')
+        ? `<img class="thumb" alt="" src="${URL.createObjectURL(f)}">`
+        : '<span style="font-size:22px" aria-hidden="true">▤</span>'}
+      <span class="fn">${esc(f.name)}</span>
+      <span class="mono-sm">${kb(f.size)}</span>
+      <button class="btn quiet sm" type="button" data-dropfile="${i}"
+              aria-label="Remove ${esc(f.name)}">remove</button>
+    </div>`).join('') +
+    (upFiles.length
+      ? `<div class="help" style="margin-top:7px">${upFiles.length} of ${MAX_FILES} files
+         ${upFiles.length < MAX_FILES ? '· choose again to add another' : '· limit reached'}</div>`
+      : '');
+  renderUploadSummary();
+}
+
+$('upFile').addEventListener('change', () => {
+  const picked = [...$('upFile').files];
+  $('upFile').value = '';
+  for (const f of picked){
+    if (upFiles.length >= MAX_FILES){
+      toast(`Up to ${MAX_FILES} files — "${f.name}" was not added`, 'err'); continue;
+    }
+    if (f.size > 5*1024*1024){
+      toast(`"${f.name}" is over 5 MB — take the photo at a smaller size`, 'err'); continue;
+    }
+    if (upFiles.some(x => x.name === f.name && x.size === f.size)){
+      toast(`"${f.name}" is already attached`, 'err'); continue;
+    }
+    upFiles.push(f);
+  }
+  renderUpFiles();
+});
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-dropfile]'); if (!t) return;
+  upFiles.splice(Number(t.dataset.dropfile), 1);
+  renderUpFiles();
+});
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-clear]'); if (!t) return;
   const input = $(t.dataset.clear);
@@ -1538,7 +1600,8 @@ async function loadMine(){
         ${b.admin_note ? `<small>${esc(b.admin_note)}</small>`
           : (b.updated_at ? `<small>updated ${esc(ago(b.updated_at))}</small>` : '')}</div>
       ${pill(b.status)}
-      ${b.receipt_path ? `<button class="btn ghost sm" data-preview="receipts|${esc(b.receipt_path)}">View</button>` : ''}
+      ${filesOf(b).map((p, i) => `<button class="btn ghost sm"
+          data-preview="receipts|${esc(p)}">View${filesOf(b).length > 1 ? ' ' + (i+1) : ''}</button>`).join('')}
     </div>`).join('')
     : `<div class="empty"><span class="big" aria-hidden="true">▤</span>
        <div class="t">No bills yet</div>
@@ -1561,18 +1624,21 @@ function renderRejectNotice(bills){
 $('upPeriod').onchange = () => loadMine();
 
 function renderUploadSummary(cur){
-  const period = $('upPeriod').value, file = $('upFile').files[0];
+  const period = $('upPeriod').value;
   const amt = $('upAmount').value.trim();
   const existing = cur !== undefined ? cur : null;
   $('upPeriodNote').textContent = period ? monthLabel(period) : '';
-  if (!file || !period){ $('upSummary').innerHTML = ''; return; }
-  const replacing = existing && existing.receipt_path;
+  if (!upFiles.length || !period){ $('upSummary').innerHTML = ''; return; }
+  const replacing = existing && (existing.receipt_path ||
+    (existing.receipt_paths && existing.receipt_paths.length));
+  const names = upFiles.map(f => '<b>' + esc(f.name) + '</b>').join(', ');
   $('upSummary').innerHTML = `
     <div class="msg info"><span class="ic" aria-hidden="true">i</span>
-      <span>Submitting <b>${esc(file.name)}</b>${amt !== '' ? ' for <b>' + money(Number(amt)) + '</b>' : ''}
+      <span>Submitting ${upFiles.length} file${upFiles.length===1?'':'s'} — ${names}${
+        amt !== '' ? ' for <b>' + money(Number(amt)) + '</b>' : ''}
       for <b>${esc(monthLabel(period))}</b>.
-      ${replacing ? 'This replaces the copy already on file for that month and sends it back for review.'
-                  : 'The committee will check the amount against the copy.'}</span></div>`;
+      ${replacing ? 'This replaces what is already on file for that month and sends it back for review.'
+                  : 'The committee will check the amount against the copies.'}</span></div>`;
 }
 $('upFile').addEventListener('change', () => renderUploadSummary());
 $('upAmount').addEventListener('input', debounce(() => renderUploadSummary(), 250));
@@ -1625,7 +1691,7 @@ async function uploadDoc(input, who){
 }
 
 $('upBtn').onclick = () => busy($('upBtn'), 'Uploading…', async () => {
-  const file = $('upFile').files[0], period = $('upPeriod').value;
+  const period = $('upPeriod').value;
   const amountRaw = $('upAmount').value.trim();
   if (!period) return toast('Pick which month this bill is for', 'err');
 
@@ -1635,7 +1701,7 @@ $('upBtn').onclick = () => busy($('upBtn'), 'Uploading…', async () => {
   if (amountBad) return toast('Enter the amount shown on your bill', 'err');
   const amount = Number(amountRaw);
 
-  if (!file) return toast('Attach the bill copy', 'err');
+  if (!upFiles.length) return toast('Attach at least one bill copy', 'err');
 
   const { data: existing } = await sb.from('bills').select('id,receipt_path,status')
     .eq('flat_id', ME.flat_id).eq('period', period).maybeSingle();
@@ -1648,21 +1714,26 @@ $('upBtn').onclick = () => busy($('upBtn'), 'Uploading…', async () => {
     if (!go) return;
   }
 
-  const safe = file.name.replace(/[^\w.\-]/g,'_');
-  const path = `${ME.flat_id}/${period}/${Date.now()}_${safe}`;
-  const { error: upErr } = await sb.storage.from('receipts').upload(path, file);
-  if (upErr) return toast('Upload failed: ' + upErr.message, 'err');
+  const paths = [];
+  for (let i = 0; i < upFiles.length; i++){
+    const f = upFiles[i];
+    const safe = f.name.replace(/[^\w.\-]/g,'_');
+    const path = `${ME.flat_id}/${period}/${Date.now()}_${i}_${safe}`;
+    const { error: upErr } = await sb.storage.from('receipts').upload(path, f);
+    if (upErr) return toast(`Upload failed on "${f.name}": ${upErr.message}`, 'err');
+    paths.push(path);
+  }
 
   const err = existing
-    ? (await sb.from('bills').update({status:'submitted', receipt_path:path, amount})
+    ? (await sb.from('bills').update({status:'submitted', receipt_paths:paths, amount})
          .eq('id', existing.id)).error
     : (await sb.from('bills').insert({flat_id:ME.flat_id, period, status:'submitted',
-         receipt_path:path, amount})).error;
+         receipt_paths:paths, amount})).error;
   if (err) return toast('Saved the file but could not update the bill: ' + err.message, 'err');
 
-  $('upFile').value = ''; $('upFile').dispatchEvent(new Event('change'));
+  upFiles = []; renderUpFiles();
   $('upAmount').value = '';
-  toast('Bill copy submitted for review');
+  toast(`${paths.length} file${paths.length===1?'':'s'} submitted for review`);
   await loadMine(); await loadBoard();
   if (ME.role === 'admin') await loadAdmin();
 });
@@ -1733,7 +1804,8 @@ function renderQueue(){
     <div class="row">
       <span class="no">${esc(name(b.flat_id))}</span>
       <div class="nm"><b>${esc(monthLabel(b.period))}</b>
-        <small>${money(b.amount)}${b.submitted_at ? ' · submitted ' + esc(ago(b.submitted_at)) : ''}</small></div>
+        <small>${money(b.amount)} · ${filesOf(b).length} file${filesOf(b).length===1?'':'s'}${
+          b.submitted_at ? ' · submitted ' + esc(ago(b.submitted_at)) : ''}</small></div>
       <button class="btn sm" data-review="${i}">Review</button>
     </div>`).join('');
 }
@@ -1770,8 +1842,11 @@ async function openReview(idx){
         <div class="help">Check this against the copy below. Correct it here if it does not match,
           then verify.</div>
       </div>
+      ${filesOf(b).length > 1 ? `<div class="chipset" id="revPages" style="margin-top:14px">
+        ${filesOf(b).map((p, i) => `<button class="chipbtn" data-page="${i}"
+          aria-pressed="${i===0}">Page ${i+1}</button>`).join('')}</div>` : ''}
       <div id="revPreview" style="margin-top:14px">
-        ${b.receipt_path ? '<div class="skel" style="height:240px"></div>'
+        ${filesOf(b).length ? '<div class="skel" style="height:240px"></div>'
           : '<div class="msg warn"><span class="ic">▲</span><span>No file was attached to this submission.</span></div>'}
       </div>
     </div>
@@ -1784,16 +1859,26 @@ async function openReview(idx){
       <button class="btn" data-decide="verify|${b.id}">Verify</button>
     </div>`);
 
-  if (b.receipt_path){
-    const { data, error } = await sb.storage.from('receipts').createSignedUrl(b.receipt_path, 300);
+  const pages = filesOf(b);
+  async function showPage(i){
+    const path = pages[i]; if (!path) return;
+    $('revPreview').innerHTML = '<div class="skel" style="height:240px"></div>';
+    const { data, error } = await sb.storage.from('receipts').createSignedUrl(path, 300);
     $('revPreview').innerHTML = error
-      ? `<div class="msg err"><span class="ic">!</span><span>Could not load the copy.</span></div>`
-      : (/\.pdf$/i.test(b.receipt_path)
+      ? `<div class="msg err"><span class="ic">!</span><span>Could not load this copy.</span></div>`
+      : (/\.pdf$/i.test(path)
           ? `<iframe class="preview" src="${data.signedUrl}" title="Bill copy"></iframe>`
           : `<img class="preview" src="${data.signedUrl}" alt="Bill copy for ${esc(f.flat_no)}">`)
-        + `<a class="btn ghost sm" href="${error?'#':data.signedUrl}" target="_blank" rel="noopener"
+        + `<a class="btn ghost sm" href="${data.signedUrl}" target="_blank" rel="noopener"
              style="margin-top:8px">Open full size</a>`;
   }
+  if (pages.length) showPage(0);
+  const rp = $('revPages');
+  if (rp) rp.addEventListener('click', e => {
+    const t = e.target.closest('[data-page]'); if (!t) return;
+    [...rp.children].forEach(x => x.setAttribute('aria-pressed', String(x === t)));
+    showPage(Number(t.dataset.page));
+  });
   const ra = $('revAmountSave');
   if (ra) ra.onclick = () => busy(ra, 'Saving…', async () => {
     const v = $('revAmount').value.trim();
