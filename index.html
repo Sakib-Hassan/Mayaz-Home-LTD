@@ -332,6 +332,20 @@ img.preview{object-fit:contain;display:block}
 .bootspin{width:26px;height:26px;border:2.5px solid var(--line);border-top-color:var(--accent);
   border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
 
+/* ===== intercom board ============================================ */
+.extgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px}
+.ext-cell{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:8px 10px;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.ext-cell.me{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.ext-cell .fl{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.ext-no{font-family:var(--mono);font-size:17px;font-weight:600;background:none;border:0;
+  padding:0;color:var(--ink);letter-spacing:.04em}
+button.ext-no:hover{color:var(--accent);text-decoration:underline}
+.badge.ext{font-family:var(--mono);background:var(--sunk);border-color:var(--line);
+  color:var(--ink-2);letter-spacing:.03em}
+button.badge.ext{cursor:pointer}
+button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
+
 /* ===== responsive ================================================ */
 @media (max-width:900px){
   .flatcard .parties{grid-template-columns:1fr;gap:10px}
@@ -348,6 +362,7 @@ img.preview{object-fit:contain;display:block}
   .toolbar{padding:11px}
   .toolbar .w-sm{width:100%}
   .board{grid-template-columns:repeat(auto-fill,minmax(97px,1fr))}
+  .extgrid{grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}
   .metrics{grid-template-columns:1fr 1fr}
   .dfoot{flex-direction:column-reverse}
   .dfoot .btn{width:100%}
@@ -482,6 +497,12 @@ img.preview{object-fit:contain;display:block}
       <div class="pagehead">
         <div><h2>Phone index</h2>
         <p class="sub">Guards, services and every flat in the building.</p></div>
+      </div>
+
+      <div class="block">
+        <h3>Intercom</h3>
+        <p class="sub">Internal extensions. Dial these from the handset in your flat.</p>
+        <div id="intercomBoard"></div>
       </div>
 
       <div class="block">
@@ -680,6 +701,15 @@ img.preview{object-fit:contain;display:block}
       </div>
 
       <div class="block">
+        <div class="pagehead" style="margin-bottom:2px">
+          <h3>Guards and services</h3>
+          <div class="acts"><button class="btn sm" id="addContact">Add a contact</button></div>
+        </div>
+        <p class="sub">Guards, caretaker, electrician, lift company — whoever residents may need to call.</p>
+        <div class="rows" id="adminContactRows"></div>
+      </div>
+
+      <div class="block">
         <h3>Logins</h3>
         <p class="sub">Create accounts in Supabase → Authentication → Users, then link each one to its flat.</p>
         <div class="toolbar">
@@ -712,8 +742,8 @@ img.preview{object-fit:contain;display:block}
    ===================================================================== */
 const CONFIG = {
   url:      'https://dzvcucceooevdjnfkunt.supabase.co',
-  anonKey:  'sb_publishable_hBFkEbi_Mx9wXLrZ2pMUzg_8kh3g_bu',
-  building: 'Mayaz Home testing'     // your building's name
+  anonKey:  'PASTE_YOUR_PUBLISHABLE_KEY_HERE',
+  building: 'Mayaz Home LTD'
 };
 
 /* ===== helpers ===================================================== */
@@ -954,7 +984,7 @@ async function start(){
 
     $('period').value = $('upPeriod').value = $('genPeriod').value = thisMonth();
     buildBlockFilters();
-    renderContacts(); renderDirectory();
+    renderContacts(); renderIntercom(); renderDirectory();
     await loadBoard();
     await loadMine();
     if (ME.role === 'admin') await loadAdmin();
@@ -990,7 +1020,7 @@ function paintSync(){
 setInterval(paintSync, 30000);
 
 $('refreshBtn').onclick = () => busy($('refreshBtn'), '', async () => {
-  await loadCore(); renderContacts(); renderDirectory();
+  await loadCore(); renderContacts(); renderIntercom(); renderDirectory();
   await loadBoard(); await loadMine();
   if (ME.role === 'admin') await loadAdmin();
   markSync(); toast('Refreshed');
@@ -1277,12 +1307,47 @@ function renderContacts(){
   $('contactRows').innerHTML = CONTACTS.length ? CONTACTS.map(c => `
     <div class="row">
       <div class="nm"><b>${esc(c.designation || c.name)}</b><small>${esc(c.name)}</small></div>
+      ${c.intercom ? `<span class="badge ext">ext ${esc(c.intercom)}</span>` : ''}
       <div class="inline">${telLink(c.phone)}${copyBtn(c.phone)}
         ${c.phone?`<a class="btn ghost sm" href="tel:${esc(c.phone)}">Call</a>`:''}</div>
     </div>`).join('')
     : `<div class="empty"><span class="big" aria-hidden="true">☎</span>
        <div class="t">No guard numbers yet</div>
-       <div>The committee adds these in Supabase → Table Editor → contacts.</div></div>`;
+       <div>${ME.role === 'admin'
+         ? 'Add them in the Committee tab, under Guards and services.'
+         : 'The committee adds these.'}</div></div>`;
+}
+
+function renderIntercom(){
+  const rows = FLATS.filter(f => !f.is_common);
+  const withExt = rows.filter(f => f.intercom);
+  if (!withExt.length){
+    $('intercomBoard').innerHTML = `<div class="empty">
+      <span class="big" aria-hidden="true">☏</span>
+      <div class="t">No intercom numbers recorded yet</div>
+      <div>${ME.role === 'admin'
+        ? 'Add them in the Committee tab, under Flat records.'
+        : 'The committee adds these.'}</div></div>`;
+    return;
+  }
+  const groups = [];
+  rows.forEach(f => { const head = 'Block ' + f.block;
+    let g = groups[groups.length-1];
+    if (!g || g.head !== head) groups.push(g = {head, items:[]});
+    g.items.push(f); });
+
+  $('intercomBoard').innerHTML = groups.map(g => `
+    <div class="sectionhead">${esc(g.head)}</div>
+    <div class="extgrid">${g.items.map(f => `
+      <div class="ext-cell${f.id===ME.flat_id?' me':''}">
+        <span class="fl">${esc(f.flat_no)}</span>
+        ${f.intercom
+          ? `<button class="ext-no" data-copy="${esc(f.intercom)}"
+               title="Copy ${esc(f.intercom)}">${esc(f.intercom)}</button>`
+          : '<span class="ext-no none-txt">—</span>'}
+      </div>`).join('')}</div>`).join('') +
+    `<p class="privacy">${withExt.length} of ${rows.length} flats have an extension recorded.
+      Tap a number to copy it.</p>`;
 }
 
 function dirRows(){
@@ -1293,7 +1358,8 @@ function dirRows(){
     if (F.occ === 'owner' && f.tenant_name) return false;
     if (F.occ === 'rented' && !f.tenant_name) return false;
     if (q){
-      const hay = [f.flat_no, f.owner_name, f.tenant_name, f.phone, f.tenant_phone, f.meter_no]
+      const hay = [f.flat_no, f.owner_name, f.tenant_name, f.phone, f.tenant_phone,
+                   f.meter_no, f.intercom]
         .filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
@@ -1322,6 +1388,7 @@ function renderDirectory(){
         <span class="no">${esc(f.flat_no)}</span>
         <div class="nm"><b>${esc(f.owner_name || '—')}</b>
           ${f.tenant_name ? `<small>Tenant: ${esc(f.tenant_name)}</small>` : ''}</div>
+        ${f.intercom ? `<span class="badge ext">${esc(f.intercom)}</span>` : ''}
         <span class="badge ${f.tenant_name?'rented':''}">${f.tenant_name?'Rented':'Owner'}</span>
         <div class="inline">${telLink(f.tenant_phone || f.phone)}${copyBtn(f.tenant_phone || f.phone)}</div>
       </div>`).join('')}</div>`;
@@ -1344,6 +1411,8 @@ function renderDirectory(){
         </div>
         <div class="side">
           <span class="badge ${f.tenant_name?'rented':''}">${f.tenant_name?'Rented':'Owner occupied'}</span>
+          ${f.intercom ? `<button class="badge ext" data-copy="${esc(f.intercom)}"
+             title="Copy extension">intercom ${esc(f.intercom)}</button>` : ''}
           ${f.meter_no ? `<span class="mono-sm">Meter ${esc(f.meter_no)}</span>` : ''}
         </div>
       </div>`).join('')}`).join('');
@@ -1599,7 +1668,7 @@ async function loadAdmin(){
       <span class="k">Sent back</span><span class="d">${unlinked} account${unlinked===1?'':'s'} unlinked</span></div>`;
   $('mQueue').onclick = () => $('queueRows').scrollIntoView({behavior:'smooth', block:'center'});
 
-  renderQueue(); renderAdminFlats(); renderUsers();
+  renderQueue(); renderAdminFlats(); renderAdminContacts(); renderUsers();
 }
 
 function queueRows(){
@@ -1780,8 +1849,11 @@ function renderAdminFlats(){
             <small>${f.is_common ? 'stairs, lift and garage'
               : (f.tenant_name ? 'Tenant: ' + esc(f.tenant_name) : 'Owner occupied')}</small>
           </div>
+          ${f.is_common ? '' : `<input data-intercom="${f.id}" value="${esc(f.intercom || '')}"
+                 placeholder="Ext" inputmode="numeric" maxlength="5"
+                 aria-label="Intercom extension for ${esc(f.flat_no)}" style="width:72px">`}
           <input data-meter="${f.id}" value="${esc(f.meter_no || '')}" placeholder="Meter no"
-                 aria-label="Meter number for ${esc(f.flat_no)}" style="width:118px">
+                 aria-label="Meter number for ${esc(f.flat_no)}" style="width:112px">
           <button class="btn ghost sm" data-savemeter="${f.id}">Save</button>
           ${f.is_common ? '' : `<button class="btn sm" data-editflat="${f.id}">Edit</button>`}
         </div>`).join('')}</div>
@@ -1792,12 +1864,26 @@ $('adminFlatRows').addEventListener('click', async e => {
   const sm = e.target.closest('[data-savemeter]');
   if (sm){
     const id = sm.dataset.savemeter;
-    const v = document.querySelector(`[data-meter="${id}"]`).value.trim() || null;
+    const meterEl = document.querySelector(`[data-meter="${id}"]`);
+    const extEl   = document.querySelector(`[data-intercom="${id}"]`);
+    const meter = meterEl.value.trim() || null;
+    const ext   = extEl ? (extEl.value.trim() || null) : undefined;
+
+    if (ext && !/^\d{2,5}$/.test(ext)){
+      extEl.setAttribute('aria-invalid','true');
+      return toast('An intercom extension should be 2 to 5 digits', 'err');
+    }
+    if (extEl) extEl.setAttribute('aria-invalid','false');
+
+    const patch = { meter_no: meter };
+    if (ext !== undefined) patch.intercom = ext;
+
     await busy(sm, '', async () => {
-      const { error } = await sb.from('flats').update({meter_no:v}).eq('id', id);
+      const { error } = await sb.from('flats').update(patch).eq('id', id);
       if (error) return toast(error.message, 'err');
-      const f = FLATS.find(x => String(x.id) === String(id)); if (f) f.meter_no = v;
-      toast('Meter number saved'); renderDirectory();
+      const f = FLATS.find(x => String(x.id) === String(id));
+      if (f){ f.meter_no = meter; if (ext !== undefined) f.intercom = ext; }
+      toast('Saved'); renderDirectory(); renderIntercom();
     });
     return;
   }
@@ -1856,6 +1942,105 @@ function openFlatEditor(id){
     await loadCore(); renderDirectory(); renderAdminFlats();
     closeLayer(); toast(f.flat_no + ' updated');
   });
+}
+
+/* ----- guards and services ----- */
+function renderAdminContacts(){
+  if (!CONTACTS.length){
+    $('adminContactRows').innerHTML = `<div class="empty">
+      <span class="big" aria-hidden="true">☎</span>
+      <div class="t">No contacts yet</div>
+      <div>Add the guard shifts and the caretaker so residents can reach them.</div></div>`;
+    return;
+  }
+  $('adminContactRows').innerHTML = CONTACTS.map(c => `
+    <div class="row">
+      <span class="mono-sm" style="min-width:26px">${esc(String(c.sort_order ?? 0))}</span>
+      <div class="nm"><b>${esc(c.designation || c.name)}</b><small>${esc(c.name)}</small></div>
+      ${c.intercom ? `<span class="badge ext">ext ${esc(c.intercom)}</span>` : ''}
+      <span class="tel">${esc(c.phone || '')}</span>
+      <button class="btn ghost sm" data-editcontact="${c.id}">Edit</button>
+    </div>`).join('');
+}
+
+$('addContact').onclick = () => openContactEditor(null);
+$('adminContactRows').addEventListener('click', e => {
+  const t = e.target.closest('[data-editcontact]'); if (!t) return;
+  openContactEditor(Number(t.dataset.editcontact));
+});
+
+function openContactEditor(id){
+  const c = id ? CONTACTS.find(x => x.id === id) : null;
+  const nextOrder = CONTACTS.length ? Math.max(...CONTACTS.map(x => x.sort_order || 0)) + 1 : 1;
+
+  layer('drawer', `
+    <div class="dhead"><h3>${c ? 'Edit contact' : 'Add a contact'}</h3>
+      <button class="x" data-close aria-label="Close">×</button></div>
+    <div class="dbody">
+      <div class="field"><label for="ctRole">Role shown to residents</label>
+        <input id="ctRole" value="${esc(c ? (c.designation||'') : '')}"
+               placeholder="e.g. Guard — night shift">
+        <div class="help">This is the bold line in the phone index.</div></div>
+      <div class="field"><label for="ctName">Name</label>
+        <input id="ctName" value="${esc(c ? (c.name||'') : '')}" placeholder="e.g. Security desk">
+        <div class="err hidden" id="ctNameErr">A name is required.</div></div>
+      <div class="field"><label for="ctPhone">Mobile number</label>
+        <input id="ctPhone" type="tel" inputmode="tel" value="${esc(c ? (c.phone||'') : '')}"
+               placeholder="01XXXXXXXXX">
+        <div class="err hidden" id="ctPhoneErr">Use digits, spaces, + or -.</div></div>
+      <div class="field"><label for="ctExt">Intercom extension</label>
+        <input id="ctExt" inputmode="numeric" maxlength="5" value="${esc(c ? (c.intercom||'') : '')}"
+               placeholder="optional">
+        <div class="err hidden" id="ctExtErr">2 to 5 digits.</div></div>
+      <div class="field"><label for="ctOrder">Position in the list</label>
+        <input id="ctOrder" type="number" min="0" step="1"
+               value="${c ? (c.sort_order ?? 0) : nextOrder}">
+        <div class="help">Lower numbers appear first.</div></div>
+    </div>
+    <div class="dfoot">
+      ${c ? '<div class="left"><button class="btn danger" id="ctDelete">Remove</button></div>' : ''}
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn" id="ctSave">${c ? 'Save changes' : 'Add contact'}</button>
+    </div>`);
+
+  $('ctSave').onclick = () => busy($('ctSave'), 'Saving…', async () => {
+    const name = $('ctName').value.trim();
+    const phone = $('ctPhone').value.trim();
+    const ext = $('ctExt').value.trim();
+    let bad = false;
+    $('ctNameErr').classList.toggle('hidden', !!name);
+    if (!name) bad = true;
+    const phoneOk = PHONE_OK(phone);
+    $('ctPhoneErr').classList.toggle('hidden', phoneOk);
+    if (!phoneOk) bad = true;
+    const extOk = !ext || /^\d{2,5}$/.test(ext);
+    $('ctExtErr').classList.toggle('hidden', extOk);
+    if (!extOk) bad = true;
+    if (bad) return;
+
+    const patch = { name, phone: phone || null, designation: $('ctRole').value.trim() || null,
+                    intercom: ext || null, sort_order: Number($('ctOrder').value || 0) };
+    const { error } = c
+      ? await sb.from('contacts').update(patch).eq('id', c.id)
+      : await sb.from('contacts').insert(patch);
+    if (error) return toast(error.message, 'err');
+
+    await loadCore(); renderContacts(); renderAdminContacts();
+    closeLayer(); toast(c ? 'Contact updated' : 'Contact added');
+  });
+
+  const del = $('ctDelete');
+  if (del) del.onclick = async () => {
+    const go = await confirmDialog({ title:'Remove this contact?',
+      body:`<p style="margin:0">Residents will no longer see
+        <b>${esc(c.designation || c.name)}</b> in the phone index.</p>`,
+      confirmText:'Remove', danger:true });
+    if (!go) return;
+    const { error } = await sb.from('contacts').delete().eq('id', c.id);
+    if (error) return toast(error.message, 'err');
+    await loadCore(); renderContacts(); renderAdminContacts();
+    closeLayer(); toast('Contact removed');
+  };
 }
 
 /* ----- logins ----- */
