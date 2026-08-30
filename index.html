@@ -612,7 +612,8 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 
       <div class="block narrow">
         <h3>Upload a paid bill</h3>
-        <p class="sub">Three steps: pick the month, attach the copy, submit for review.</p>
+        <p class="sub">Pick the month, enter the amount from your bill, attach the copy, submit.
+          The committee checks the figure against the copy.</p>
         <div class="panel" id="mineUpload">
           <div id="rejectNotice"></div>
           <div class="field">
@@ -621,7 +622,14 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
             <div class="help" id="upPeriodNote"></div>
           </div>
           <div class="field">
-            <label for="upFile">2 · Bill copy</label>
+            <label for="upAmount">2 · Bill amount</label>
+            <input id="upAmount" type="number" step="0.01" min="0" inputmode="decimal"
+                   placeholder="e.g. 1840">
+            <div class="help">The total shown on your electricity bill for this month.</div>
+            <div class="err hidden" id="upAmountErr">Enter the amount from the bill.</div>
+          </div>
+          <div class="field">
+            <label for="upFile">3 · Bill copy</label>
             <div class="filecard" id="fc-upFile">
               <input id="upFile" type="file" accept="image/*,application/pdf">
               <div class="meta">JPG, PNG or PDF · up to 5 MB</div>
@@ -629,7 +637,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
             </div>
           </div>
           <div id="upSummary"></div>
-          <button class="btn" id="upBtn">3 · Submit for review</button>
+          <button class="btn" id="upBtn">4 · Submit for review</button>
         </div>
       </div>
 
@@ -674,15 +682,17 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 
       <div class="block narrow">
         <h3>Open a billing month</h3>
-        <p class="sub">Creates one bill line per flat. You will see exactly what will happen before it does.</p>
+        <p class="sub">Creates one empty bill line per flat. Residents then enter their own amount
+          when they upload the copy, and you confirm it during review.</p>
         <div class="panel">
           <div class="row2">
             <div class="field"><label for="genPeriod">Month</label>
               <input id="genPeriod" type="month">
               <div class="help">The month the bill covers.</div></div>
-            <div class="field"><label for="genAmount">Amount per flat</label>
-              <input id="genAmount" type="number" step="0.01" min="0" placeholder="3500">
-              <div class="help">Applied to all 30 residential flats.</div></div>
+            <div class="field"><label for="genAmount">Amount per flat (optional)</label>
+              <input id="genAmount" type="number" step="0.01" min="0" placeholder="leave blank">
+              <div class="help">Leave empty — each resident enters their own metered amount
+                when they upload. Only fill this in if every flat pays an identical fixed charge.</div></div>
           </div>
           <div class="field">
             <label for="genCommon">Master meter amount</label>
@@ -1139,11 +1149,21 @@ function renderBoard(){
     if (st === 'verified') c.verified++; else if (st === 'submitted') c.submitted++; else c.outstanding++; });
   const total = all.length || 1;
   const pct = Math.round(c.verified / total * 100);
+  const totals = { billed:0, verified:0, missing:0 };
+  all.forEach(f => { const b = BILLS[f.id];
+    if (!b || b.amount == null){ totals.missing++; return; }
+    totals.billed += Number(b.amount);
+    if (b.status === 'verified') totals.verified += Number(b.amount); });
 
   $('progressWrap').innerHTML = `
     <div class="progress">
       <div class="top"><span>Coverage for <b>${esc(monthLabel($('period').value))}</b></span>
         <span><b>${c.verified}</b> of <b>${all.length}</b> flats verified · ${pct}%</span></div>
+      <div class="top" style="margin:9px 0 0;padding-top:9px;border-top:1px solid var(--line-2)">
+        <span>Billed this month <b>${money(totals.billed)}</b></span>
+        <span>Verified <b>${money(totals.verified)}</b>
+          ${totals.missing ? `· <span style="color:var(--muted)">${totals.missing} flat${
+            totals.missing===1?'':'s'} have not stated an amount</span>` : ''}</span></div>
       <div class="bar" role="img" aria-label="${c.verified} of ${all.length} flats verified">
         <i class="b-ok"   style="width:${c.verified/total*100}%"></i>
         <i class="b-warn" style="width:${c.submitted/total*100}%"></i>
@@ -1507,6 +1527,7 @@ async function loadMine(){
   if (error){ banner($('mineRows'), 'Could not load your bills.', 'err'); return; }
 
   const cur = (bills||[]).find(b => b.period === $('upPeriod').value);
+  if (cur && cur.amount != null && $('upAmount').value === '') $('upAmount').value = cur.amount;
   renderRejectNotice(bills || []);
   renderUploadSummary(cur);
 
@@ -1541,17 +1562,20 @@ $('upPeriod').onchange = () => loadMine();
 
 function renderUploadSummary(cur){
   const period = $('upPeriod').value, file = $('upFile').files[0];
+  const amt = $('upAmount').value.trim();
   const existing = cur !== undefined ? cur : null;
   $('upPeriodNote').textContent = period ? monthLabel(period) : '';
   if (!file || !period){ $('upSummary').innerHTML = ''; return; }
   const replacing = existing && existing.receipt_path;
   $('upSummary').innerHTML = `
     <div class="msg info"><span class="ic" aria-hidden="true">i</span>
-      <span>Submitting <b>${esc(file.name)}</b> for <b>${esc(monthLabel(period))}</b>.
+      <span>Submitting <b>${esc(file.name)}</b>${amt !== '' ? ' for <b>' + money(Number(amt)) + '</b>' : ''}
+      for <b>${esc(monthLabel(period))}</b>.
       ${replacing ? 'This replaces the copy already on file for that month and sends it back for review.'
-                  : 'The committee will review it.'}</span></div>`;
+                  : 'The committee will check the amount against the copy.'}</span></div>`;
 }
 $('upFile').addEventListener('change', () => renderUploadSummary());
+$('upAmount').addEventListener('input', debounce(() => renderUploadSummary(), 250));
 
 $('dSave').onclick = () => busy($('dSave'), 'Saving…', async () => {
   document.querySelectorAll('[data-err]').forEach(e => e.classList.add('hidden'));
@@ -1602,8 +1626,16 @@ async function uploadDoc(input, who){
 
 $('upBtn').onclick = () => busy($('upBtn'), 'Uploading…', async () => {
   const file = $('upFile').files[0], period = $('upPeriod').value;
-  if (!file)   return toast('Choose the bill copy first', 'err');
+  const amountRaw = $('upAmount').value.trim();
   if (!period) return toast('Pick which month this bill is for', 'err');
+
+  const amountBad = amountRaw === '' || isNaN(Number(amountRaw)) || Number(amountRaw) < 0;
+  $('upAmountErr').classList.toggle('hidden', !amountBad);
+  $('upAmount').setAttribute('aria-invalid', String(amountBad));
+  if (amountBad) return toast('Enter the amount shown on your bill', 'err');
+  const amount = Number(amountRaw);
+
+  if (!file) return toast('Attach the bill copy', 'err');
 
   const { data: existing } = await sb.from('bills').select('id,receipt_path,status')
     .eq('flat_id', ME.flat_id).eq('period', period).maybeSingle();
@@ -1622,11 +1654,14 @@ $('upBtn').onclick = () => busy($('upBtn'), 'Uploading…', async () => {
   if (upErr) return toast('Upload failed: ' + upErr.message, 'err');
 
   const err = existing
-    ? (await sb.from('bills').update({status:'submitted', receipt_path:path}).eq('id', existing.id)).error
-    : (await sb.from('bills').insert({flat_id:ME.flat_id, period, status:'submitted', receipt_path:path})).error;
+    ? (await sb.from('bills').update({status:'submitted', receipt_path:path, amount})
+         .eq('id', existing.id)).error
+    : (await sb.from('bills').insert({flat_id:ME.flat_id, period, status:'submitted',
+         receipt_path:path, amount})).error;
   if (err) return toast('Saved the file but could not update the bill: ' + err.message, 'err');
 
   $('upFile').value = ''; $('upFile').dispatchEvent(new Event('change'));
+  $('upAmount').value = '';
   toast('Bill copy submitted for review');
   await loadMine(); await loadBoard();
   if (ME.role === 'admin') await loadAdmin();
@@ -1721,11 +1756,20 @@ async function openReview(idx){
     </div>
     <div class="dbody">
       <dl class="kv">
-        <dt>Amount</dt><dd>${money(b.amount)}</dd>
         <dt>Owner</dt><dd>${esc(f.owner_name || '—')}</dd>
         ${f.tenant_name ? `<dt>Tenant</dt><dd>${esc(f.tenant_name)}</dd>` : ''}
         <dt>Submitted</dt><dd>${esc(dateTime(b.submitted_at) || '—')}</dd>
       </dl>
+      <div class="field" style="margin-top:14px">
+        <label for="revAmount">Amount stated by the resident</label>
+        <div class="inline">
+          <input id="revAmount" type="number" step="0.01" min="0"
+                 value="${b.amount != null ? b.amount : ''}" style="width:150px">
+          <button class="btn ghost sm" id="revAmountSave">Correct amount</button>
+        </div>
+        <div class="help">Check this against the copy below. Correct it here if it does not match,
+          then verify.</div>
+      </div>
       <div id="revPreview" style="margin-top:14px">
         ${b.receipt_path ? '<div class="skel" style="height:240px"></div>'
           : '<div class="msg warn"><span class="ic">▲</span><span>No file was attached to this submission.</span></div>'}
@@ -1750,6 +1794,18 @@ async function openReview(idx){
         + `<a class="btn ghost sm" href="${error?'#':data.signedUrl}" target="_blank" rel="noopener"
              style="margin-top:8px">Open full size</a>`;
   }
+  const ra = $('revAmountSave');
+  if (ra) ra.onclick = () => busy(ra, 'Saving…', async () => {
+    const v = $('revAmount').value.trim();
+    if (v !== '' && (isNaN(Number(v)) || Number(v) < 0)) return toast('Enter a valid amount', 'err');
+    const { error } = await sb.from('bills')
+      .update({ amount: v === '' ? null : Number(v) }).eq('id', b.id);
+    if (error) return toast(error.message, 'err');
+    b.amount = v === '' ? null : Number(v);
+    toast('Amount corrected');
+    await loadBoard();
+  });
+
   openLayer.node.querySelectorAll('[data-nav]').forEach(btn => btn.onclick = () => {
     const n = Number(btn.dataset.nav);
     if (n >= 0 && n < rows.length) openReview(n);
@@ -1795,7 +1851,6 @@ $('genBtn').onclick = () => busy($('genBtn'), 'Checking…', async () => {
   const period = $('genPeriod').value;
   const amount = $('genAmount').value, common = $('genCommon').value;
   if (!period) return toast('Pick a month', 'err');
-  if (amount === '') return toast('Enter the amount per flat', 'err');
 
   const { data: pv, error } = await sb.rpc('preview_period_bills', { p_period: period });
   if (error) return toast(error.message, 'err');
@@ -1805,7 +1860,9 @@ $('genBtn').onclick = () => busy($('genBtn'), 'Checking…', async () => {
     title:'Create billing month',
     body:`<dl class="kv">
         <dt>Month</dt><dd><b>${esc(monthLabel(period))}</b></dd>
-        <dt>Per flat</dt><dd>${money(Number(amount))}</dd>
+        <dt>Per flat</dt><dd>${amount === ''
+          ? '<span class="none-txt">blank — each resident enters their own</span>'
+          : money(Number(amount))}</dd>
         <dt>Master meter</dt><dd>${common === '' ? '<span class="none-txt">skipped</span>' : money(Number(common))}</dd>
         <dt>New lines</dt><dd><b>${p.would_create}</b> of ${p.total_flats} flats</dd>
       </dl>
@@ -1821,7 +1878,7 @@ $('genBtn').onclick = () => busy($('genBtn'), 'Checking…', async () => {
 
   const { data, error: e2 } = await sb.rpc('create_period_bills', {
     p_period: period,
-    p_amount: Number(amount),
+    p_amount: amount === '' ? null : Number(amount),
     p_common_amount: common === '' ? null : Number(common) });
   if (e2) return toast(e2.message, 'err');
   toast(`${data} bill lines created for ${monthLabel(period)}`);
