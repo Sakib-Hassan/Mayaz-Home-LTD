@@ -560,60 +560,16 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
       <div id="mineAlert"></div>
 
       <div class="block narrow" id="mineDetails">
-        <h3>Flat details</h3>
-        <p class="sub" id="completion"></p>
-        <div class="panel">
-          <div class="sectionhead" style="margin-top:0">Owner</div>
-          <div class="row2">
-            <div class="field"><label for="dOwnerName">Full name</label>
-              <input id="dOwnerName" placeholder="Name as on the deed"></div>
-            <div class="field"><label for="dOwnerPhone">Phone</label>
-              <input id="dOwnerPhone" type="tel" inputmode="tel" placeholder="01XXXXXXXXX">
-              <div class="err hidden" data-err="dOwnerPhone"></div></div>
-          </div>
-
-          <div class="sectionhead">Tenant</div>
-          <label class="switch" style="margin-bottom:13px">
-            <input type="checkbox" id="ownerOccupied">
-            <span class="track" aria-hidden="true"></span>
-            <span class="txt">This flat is owner occupied</span>
-          </label>
-          <div id="tenantFields">
-            <div class="row2">
-              <div class="field"><label for="dTenantName">Tenant name</label>
-                <input id="dTenantName" placeholder="Full name"></div>
-              <div class="field"><label for="dTenantPhone">Tenant phone</label>
-                <input id="dTenantPhone" type="tel" inputmode="tel" placeholder="01XXXXXXXXX">
-                <div class="err hidden" data-err="dTenantPhone"></div></div>
-            </div>
-          </div>
-
-          <div class="sectionhead">Identification</div>
-          <p class="help" style="margin:-4px 0 12px">A photo or scan of the NID.
-            Only your flat and the committee can open these.</p>
-          <div class="field">
-            <label for="dOwnerNid">Owner NID</label>
-            <div class="filecard" id="fc-dOwnerNid">
-              <input id="dOwnerNid" type="file" accept="image/*,application/pdf">
-              <div class="meta">JPG, PNG or PDF · up to 5 MB</div>
-              <div class="chosen hidden"></div>
-            </div>
-            <button class="btn ghost sm hidden" id="dOwnerNidView" style="margin-top:8px">View stored copy</button>
-          </div>
-          <div class="field" id="tenantNidField">
-            <label for="dTenantNid">Tenant NID</label>
-            <div class="filecard" id="fc-dTenantNid">
-              <input id="dTenantNid" type="file" accept="image/*,application/pdf">
-              <div class="meta">JPG, PNG or PDF · up to 5 MB</div>
-              <div class="chosen hidden"></div>
-            </div>
-            <button class="btn ghost sm hidden" id="dTenantNidView" style="margin-top:8px">View stored copy</button>
-          </div>
-
-          <div class="inline" style="margin-top:6px">
-            <button class="btn" id="dSave" disabled>Saved</button>
-            <span class="help" id="dirtyNote"></span>
-          </div>
+        <div class="pagehead" style="margin-bottom:2px">
+          <h3>Flat details</h3>
+          <div class="acts"><button class="btn sm" id="reqOpen">Request a change</button></div>
+        </div>
+        <p class="sub">Kept by the committee. Ask for a correction and they will apply it.</p>
+        <div id="reqPending"></div>
+        <div class="panel" id="detailView"></div>
+        <div class="block" style="margin-top:22px">
+          <h3 style="font-size:15px">Your past requests</h3>
+          <div class="rows" id="myRequests" style="margin-top:8px"></div>
         </div>
       </div>
 
@@ -664,6 +620,14 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
       </div>
 
       <div class="metrics" id="adminMetrics"></div>
+
+      <div class="block">
+        <div class="pagehead" style="margin-bottom:2px">
+          <h3>Change requests</h3>
+        </div>
+        <p class="sub">Residents asking for a correction to their flat record.</p>
+        <div class="rows" id="requestRows"></div>
+      </div>
 
       <div class="block">
         <h3>Review queue</h3>
@@ -724,8 +688,12 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
       </div>
 
       <div class="block">
-        <h3>Logins</h3>
-        <p class="sub">Create accounts in Supabase → Authentication → Users, then link each one to its flat.</p>
+        <div class="pagehead" style="margin-bottom:2px">
+          <h3>Logins</h3>
+          <div class="acts"><button class="btn sm" id="newLogin">Create a login</button></div>
+        </div>
+        <p class="sub">One account per flat. Create it here, hand the resident their email and password.</p>
+        <div id="loginsNote"></div>
         <div class="toolbar">
           <div class="field grow">
             <label for="uSearch">Search</label>
@@ -796,8 +764,8 @@ const pill = st => { const s = STATUS[st] || STATUS.none;
 const PHONE_OK = v => !v || /^[0-9+\-\s()]{6,20}$/.test(v);
 
 /* ===== state ======================================================= */
-let ME = null, FLATS = [], CONTACTS = [], BILLS = {}, QUEUE = [], USERS = [];
-let lastSync = null, dirty = false;
+let ME = null, FLATS = [], CONTACTS = [], BILLS = {}, QUEUE = [], USERS = [], REQUESTS = [];
+let lastSync = null;
 const F = { search:'', block:'all', onlyMine:false, showCommon:true, status:null,
             dirSearch:'', dirBlock:'all', occ:'all', mode:'cards',
             qSearch:'', qSort:'old', qPeriod:'', uSearch:'', uFil:'all' };
@@ -1051,12 +1019,6 @@ $('userBtn').onclick = () => {
     </dl>
     <div style="margin-top:16px"><button class="btn ghost wide" id="signOutBtn">Sign out</button></div>`);
   $('signOutBtn').onclick = async () => {
-    if (dirty){
-      const go = await confirmDialog({ title:'Unsaved changes',
-        body:'<p style="margin:0">Your flat details have changes that have not been saved. Sign out anyway?</p>',
-        confirmText:'Sign out', danger:true });
-      if (!go) return;
-    }
     await sb.auth.signOut(); location.reload();
   };
 };
@@ -1467,11 +1429,8 @@ function wireFilePicker(inputId){
       <span class="fn">${esc(f.name)}</span>
       <span class="mono-sm">${kb(f.size)}</span>
       <button class="btn quiet sm" type="button" data-clear="${inputId}">remove</button>`;
-    if (inputId !== 'upFile') markDirty();
-    if (inputId === 'upFile') renderUploadSummary();
   });
 }
-['dOwnerNid','dTenantNid'].forEach(wireFilePicker);
 
 /* ----- bill copy: up to three files ----- */
 const MAX_FILES = 3;
@@ -1527,22 +1486,161 @@ document.addEventListener('click', e => {
 });
 
 /* ===== my flat ===================================================== */
-function markDirty(){
-  dirty = true;
-  $('dSave').disabled = false;
-  $('dSave').textContent = 'Save details';
-  $('dirtyNote').textContent = 'You have unsaved changes.';
+const FIELD_LABEL = {
+  owner_name:'Owner name', phone:'Owner phone',
+  tenant_name:'Tenant name', tenant_phone:'Tenant phone',
+  owner_nid_path:'Owner NID', tenant_nid_path:'Tenant NID'
+};
+let MY_REQUESTS = [];
+
+function detailLine(label, value, extra){
+  return `<div style="display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--line-2)">
+    <span class="lbl" style="margin:0;min-width:118px;padding-top:2px">${esc(label)}</span>
+    <span style="flex:1">${value || '<span class="none-txt">not recorded</span>'}</span>
+    ${extra || ''}</div>`;
 }
-['dOwnerName','dOwnerPhone','dTenantName','dTenantPhone'].forEach(id =>
-  $(id).addEventListener('input', markDirty));
-$('ownerOccupied').addEventListener('change', () => {
-  const on = $('ownerOccupied').checked;
-  $('tenantFields').style.opacity = on ? .45 : 1;
-  $('tenantNidField').style.opacity = on ? .45 : 1;
-  ['dTenantName','dTenantPhone','dTenantNid'].forEach(id => $(id).disabled = on);
-  if (on){ $('dTenantName').value = ''; $('dTenantPhone').value = ''; }
-  markDirty();
-});
+
+function renderDetailView(f){
+  const nid = (path, who) => path
+    ? `<button class="btn quiet sm" data-preview="documents|${esc(path)}">view</button>`
+    : '';
+  $('detailView').innerHTML = `
+    <div class="sectionhead" style="margin-top:0">Owner</div>
+    ${detailLine('Name',  esc(f.owner_name || ''))}
+    ${detailLine('Phone', f.phone ? `<span class="tel">${esc(f.phone)}</span>` : '')}
+    ${detailLine('NID', f.owner_nid_path ? 'on file' : '', nid(f.owner_nid_path))}
+    <div class="sectionhead">Tenant</div>
+    ${f.tenant_name || f.tenant_phone || f.tenant_nid_path ? `
+      ${detailLine('Name',  esc(f.tenant_name || ''))}
+      ${detailLine('Phone', f.tenant_phone ? `<span class="tel">${esc(f.tenant_phone)}</span>` : '')}
+      ${detailLine('NID', f.tenant_nid_path ? 'on file' : '', nid(f.tenant_nid_path))}`
+      : '<p class="help" style="margin:8px 0 0">Recorded as owner occupied.</p>'}
+    <div class="sectionhead">Building</div>
+    ${detailLine('Intercom', f.intercom ? `<span class="mono-sm" style="font-size:14px">${esc(f.intercom)}</span>` : '')}
+    ${detailLine('Meter',    f.meter_no ? `<span class="mono-sm" style="font-size:14px">${esc(f.meter_no)}</span>` : '')}
+    <p class="privacy">Names and phone numbers appear in the phone index for every resident.
+      NID copies do not — only your flat and the committee can open them.
+      Intercom and meter numbers are set by the committee.</p>`;
+}
+
+function renderMyRequests(){
+  const pending = MY_REQUESTS.filter(r => r.status === 'pending');
+  banner($('reqPending'), pending.length
+    ? `You have ${pending.length} request${pending.length===1?'':'s'} waiting with the committee.`
+    : '', 'info');
+  $('reqOpen').disabled = pending.length >= 3;
+
+  $('myRequests').innerHTML = MY_REQUESTS.length ? MY_REQUESTS.map(r => `
+    <div class="row">
+      <div class="nm"><b>${Object.keys(r.changes).map(k => esc(FIELD_LABEL[k] || k)).join(', ')}</b>
+        <small>${esc(dateTime(r.created_at))}${
+          r.decision_note ? ' · ' + esc(r.decision_note) : ''}</small></div>
+      <span class="pill ${r.status==='approved'?'verified':r.status==='rejected'?'rejected':'submitted'}">
+        <span class="ic" aria-hidden="true">${
+          r.status==='approved'?'\u2713':r.status==='rejected'?'\u21ba':'\u25d4'}</span>
+        ${r.status==='approved'?'Applied':r.status==='rejected'?'Declined':'Waiting'}</span>
+    </div>`).join('')
+    : '<div class="empty"><div class="t">No requests yet</div></div>';
+}
+
+$('reqOpen').onclick = () => {
+  const f = myFlat(); if (!f) return;
+  layer('drawer', `
+    <div class="dhead"><h3>Request a change</h3>
+      <button class="x" data-close aria-label="Close">\u00d7</button></div>
+    <div class="dbody">
+      <p class="help" style="margin-top:0">Change only what needs correcting and leave the rest
+        as it is. The committee applies it once they have checked.</p>
+      <div class="sectionhead">Owner</div>
+      <div class="row2">
+        <div class="field"><label for="rqOwner">Name</label>
+          <input id="rqOwner" value="${esc(f.owner_name||'')}"></div>
+        <div class="field"><label for="rqPhone">Phone</label>
+          <input id="rqPhone" type="tel" value="${esc(f.phone||'')}">
+          <div class="err hidden" id="rqPhoneErr">Use digits, spaces, + or -.</div></div>
+      </div>
+      <div class="sectionhead">Tenant</div>
+      <div class="row2">
+        <div class="field"><label for="rqTName">Name</label>
+          <input id="rqTName" value="${esc(f.tenant_name||'')}" placeholder="blank if owner occupied"></div>
+        <div class="field"><label for="rqTPhone">Phone</label>
+          <input id="rqTPhone" type="tel" value="${esc(f.tenant_phone||'')}">
+          <div class="err hidden" id="rqTPhoneErr">Use digits, spaces, + or -.</div></div>
+      </div>
+      <div class="sectionhead">Attach a document</div>
+      <div class="field">
+        <label for="rqFile">NID copy (optional)</label>
+        <div class="filecard" id="fc-rqFile">
+          <input id="rqFile" type="file" accept="image/*,application/pdf">
+          <div class="meta">JPG, PNG or PDF \u00b7 up to 5 MB</div>
+          <div class="chosen hidden"></div>
+        </div>
+        <div class="field" style="margin-top:9px">
+          <label for="rqWhose">This NID belongs to</label>
+          <select id="rqWhose">
+            <option value="owner_nid_path">The owner</option>
+            <option value="tenant_nid_path">The tenant</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="rqNote">Anything the committee should know</label>
+        <textarea id="rqNote" rows="3" placeholder="e.g. new tenant moved in on 1 September"></textarea>
+      </div>
+    </div>
+    <div class="dfoot">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn" id="rqSend">Send request</button>
+    </div>`);
+
+  wireFilePicker('rqFile');
+
+  $('rqSend').onclick = () => busy($('rqSend'), 'Sending\u2026', async () => {
+    let bad = false;
+    [['rqPhone','rqPhoneErr'],['rqTPhone','rqTPhoneErr']].forEach(([i,e]) => {
+      const ok = PHONE_OK($(i).value.trim());
+      $(e).classList.toggle('hidden', ok);
+      $(i).setAttribute('aria-invalid', String(!ok));
+      if (!ok) bad = true;
+    });
+    if (bad) return;
+
+    const changes = {};
+    const put = (key, val) => {
+      const now = (f[key] ?? null), next = (val.trim() || null);
+      if (now !== next) changes[key] = next;
+    };
+    put('owner_name',   $('rqOwner').value);
+    put('phone',        $('rqPhone').value);
+    put('tenant_name',  $('rqTName').value);
+    put('tenant_phone', $('rqTPhone').value);
+
+    let attachment = null;
+    const file = $('rqFile').files[0];
+    if (file){
+      const safe = file.name.replace(/[^\w.\-]/g,'_');
+      attachment = `${ME.flat_id}/nid/req_${Date.now()}_${safe}`;
+      const { error } = await sb.storage.from('documents').upload(attachment, file);
+      if (error) return toast('Could not upload the file: ' + error.message, 'err');
+      changes[$('rqWhose').value] = attachment;
+    }
+
+    if (!Object.keys(changes).length)
+      return toast('Nothing has been changed yet', 'err');
+
+    const { error } = await sb.from('change_requests').insert({
+      flat_id: ME.flat_id, requester: ME.id,
+      requester_name: ME.full_name || ME.email,
+      changes, note: $('rqNote').value.trim() || null,
+      attachment_path: attachment
+    });
+    if (error) return toast(error.message, 'err');
+
+    closeLayer();
+    toast('Request sent to the committee');
+    await loadMine();
+  });
+};
 
 async function loadMine(){
   const f = myFlat();
@@ -1558,25 +1656,13 @@ async function loadMine(){
   banner($('mineAlert'), '');
   $('mineTitle').textContent = 'Flat ' + f.flat_no;
   $('mineSub').textContent = (f.tenant_name ? 'Rented' : 'Owner occupied')
-    + (f.meter_no ? ' · meter ' + f.meter_no : '');
-  $('dOwnerName').value  = f.owner_name   || '';
-  $('dOwnerPhone').value = f.phone        || '';
-  $('dTenantName').value = f.tenant_name  || '';
-  $('dTenantPhone').value= f.tenant_phone || '';
-  $('ownerOccupied').checked = !f.tenant_name && !f.tenant_phone;
-  $('tenantFields').style.opacity = $('ownerOccupied').checked ? .45 : 1;
-  ['dTenantName','dTenantPhone','dTenantNid'].forEach(id => $(id).disabled = $('ownerOccupied').checked);
-  showStored('dOwnerNidView',  f.owner_nid_path);
-  showStored('dTenantNidView', f.tenant_nid_path);
-  dirty = false; $('dSave').disabled = true; $('dSave').textContent = 'Saved'; $('dirtyNote').textContent = '';
+    + (f.meter_no ? ' \u00b7 meter ' + f.meter_no : '');
+  renderDetailView(f);
 
-  const filled = ['owner_name','phone','owner_nid_path'].filter(k => f[k]).length
-    + ($('ownerOccupied').checked ? 3
-       : ['tenant_name','tenant_phone','tenant_nid_path'].filter(k => f[k]).length);
-  const outOf = $('ownerOccupied').checked ? 3 : 6;
-  const done  = $('ownerOccupied').checked ? filled - 3 : filled;
-  $('completion').textContent = `${done} of ${outOf} details completed`
-    + (done < outOf ? ' — anything missing is highlighted below.' : ' — nothing missing.');
+  const { data: reqs } = await sb.from('change_requests').select('*')
+    .eq('flat_id', f.id).order('created_at', {ascending:false});
+  MY_REQUESTS = reqs || [];
+  renderMyRequests();
 
   $('mineRows').innerHTML = '<div class="skel skelrow"></div>'.repeat(3);
   const { data: bills, error } = await sb.from('bills').select('*')
@@ -1598,15 +1684,9 @@ async function loadMine(){
       ${filesOf(b).map((p, i) => `<button class="btn ghost sm"
           data-preview="receipts|${esc(p)}">View${filesOf(b).length > 1 ? ' ' + (i+1) : ''}</button>`).join('')}
     </div>`).join('')
-    : `<div class="empty"><span class="big" aria-hidden="true">▤</span>
+    : `<div class="empty"><span class="big" aria-hidden="true">\u25a4</span>
        <div class="t">No bills yet</div>
        <div>Once the committee opens a billing month, it appears here.</div></div>`;
-}
-
-function showStored(btnId, path){
-  const b = $(btnId);
-  b.classList.toggle('hidden', !path);
-  if (path) b.dataset.preview = 'documents|' + path;
 }
 
 function renderRejectNotice(bills){
@@ -1635,55 +1715,8 @@ function renderUploadSummary(cur){
       ${replacing ? 'This replaces what is already on file for that month and sends it back for review.'
                   : 'The committee will check the amount against the copies.'}</span></div>`;
 }
-$('upFile').addEventListener('change', () => renderUploadSummary());
 $('upAmount').addEventListener('input', debounce(() => renderUploadSummary(), 250));
 
-$('dSave').onclick = () => busy($('dSave'), 'Saving…', async () => {
-  document.querySelectorAll('[data-err]').forEach(e => e.classList.add('hidden'));
-  let bad = false;
-  [['dOwnerPhone'],['dTenantPhone']].forEach(([id]) => {
-    const ok = PHONE_OK($(id).value.trim());
-    $(id).setAttribute('aria-invalid', String(!ok));
-    const e = document.querySelector(`[data-err="${id}"]`);
-    if (!ok){ e.textContent = 'Use digits, spaces, + or -.'; e.classList.remove('hidden'); bad = true; }
-  });
-  if (bad){ toast('Check the highlighted fields', 'err'); return; }
-
-  try {
-    const oo = $('ownerOccupied').checked;
-    const patch = {
-      owner_name:   $('dOwnerName').value.trim()  || null,
-      phone:        $('dOwnerPhone').value.trim() || null,
-      tenant_name:  oo ? null : ($('dTenantName').value.trim() || null),
-      tenant_phone: oo ? null : ($('dTenantPhone').value.trim()|| null)
-    };
-    const o = await uploadDoc($('dOwnerNid'),  'owner');   if (o) patch.owner_nid_path = o;
-    const t = oo ? null : await uploadDoc($('dTenantNid'), 'tenant'); if (t) patch.tenant_nid_path = t;
-
-    const { error } = await sb.from('flats').update(patch).eq('id', ME.flat_id);
-    if (error) throw error;
-
-    $('dOwnerNid').value = ''; $('dTenantNid').value = '';
-    document.querySelectorAll('.filecard .chosen').forEach(c => c.classList.add('hidden'));
-    document.querySelectorAll('.filecard').forEach(c => c.classList.remove('has'));
-    await loadCore(); renderDirectory(); await loadMine();
-    toast('Details saved');
-  } catch (e){
-    console.error(e);
-    banner($('mineAlert'), 'Could not save: ' + esc(e.message || e), 'err');
-    toast('Save failed', 'err');
-  }
-});
-
-async function uploadDoc(input, who){
-  const file = input.files[0];
-  if (!file) return null;
-  const safe = file.name.replace(/[^\w.\-]/g,'_');
-  const path = `${ME.flat_id}/nid/${who}_${Date.now()}_${safe}`;
-  const { error } = await sb.storage.from('documents').upload(path, file);
-  if (error) throw error;
-  return path;
-}
 
 $('upBtn').onclick = () => busy($('upBtn'), 'Uploading…', async () => {
   const period = $('upPeriod').value;
@@ -1736,19 +1769,22 @@ $('upBtn').onclick = () => busy($('upBtn'), 'Uploading…', async () => {
 /* ===== committee =================================================== */
 async function loadAdmin(){
   $('queueRows').innerHTML = '<div class="skel skelrow"></div>'.repeat(3);
-  const [{ data: q }, { data: users }] = await Promise.all([
+  const [{ data: q }, { data: users }, { data: reqs }] = await Promise.all([
     sb.from('bills').select('*').eq('status','submitted'),
-    sb.from('profiles').select('*')
+    sb.from('profiles').select('*'),
+    sb.from('change_requests').select('*').order('created_at')
   ]);
-  QUEUE = q || []; USERS = users || [];
+  QUEUE = q || []; USERS = users || []; REQUESTS = reqs || [];
 
   const periods = [...new Set(QUEUE.map(b => b.period))].sort().reverse();
   $('qPeriod').innerHTML = '<option value="">All months</option>' +
     periods.map(p => `<option value="${esc(p)}"${F.qPeriod===p?' selected':''}>${esc(monthLabel(p))}</option>`).join('');
 
+  const pendingReqs = REQUESTS.filter(r => r.status === 'pending').length;
+  const work = QUEUE.length + pendingReqs;
   const nav = $('navCount');
-  nav.textContent = QUEUE.length;
-  nav.classList.toggle('hidden', QUEUE.length === 0);
+  nav.textContent = work;
+  nav.classList.toggle('hidden', work === 0);
 
   const all = FLATS.filter(f => !f.is_common);
   const period = $('period').value;
@@ -1765,11 +1801,13 @@ async function loadAdmin(){
       <span class="k">Action needed</span><span class="d">flats not verified for ${esc(monthLabel(period))}</span></div>
     <div class="metric ok"><b>${Math.round(ver/(all.length||1)*100)}%</b>
       <span class="k">Coverage</span><span class="d">${ver} of ${all.length} verified</span></div>
-    <div class="metric neutral"><b>${rejCount || 0}</b>
-      <span class="k">Sent back</span><span class="d">${unlinked} account${unlinked===1?'':'s'} unlinked</span></div>`;
+    <button class="metric neutral" id="mReq"><b>${pendingReqs}</b>
+      <span class="k">Change requests</span><span class="d">${unlinked} account${
+        unlinked===1?'':'s'} unlinked \u00b7 ${rejCount || 0} sent back</span></button>`;
+  $('mReq').onclick = () => $('requestRows').scrollIntoView({behavior:'smooth', block:'center'});
   $('mQueue').onclick = () => $('queueRows').scrollIntoView({behavior:'smooth', block:'center'});
 
-  renderQueue(); renderAdminFlats(); renderAdminContacts(); renderUsers();
+  renderQueue(); renderRequests(); renderAdminFlats(); renderAdminContacts(); renderUsers();
 }
 
 function queueRows(){
@@ -2078,6 +2116,104 @@ function openFlatEditor(id){
   });
 }
 
+/* ----- change requests ----- */
+function renderRequests(){
+  const pending = REQUESTS.filter(r => r.status === 'pending');
+  const name = id => (FLATS.find(f => f.id === id) || {}).flat_no || String(id);
+  if (!pending.length){
+    $('requestRows').innerHTML = `<div class="empty">
+      <span class="big" aria-hidden="true">\u2713</span>
+      <div class="t">No requests waiting</div>
+      <div>When a resident asks for a correction, it appears here.</div></div>`;
+    return;
+  }
+  $('requestRows').innerHTML = pending.map(r => `
+    <div class="row">
+      <span class="no">${esc(name(r.flat_id))}</span>
+      <div class="nm"><b>${Object.keys(r.changes).map(k => esc(FIELD_LABEL[k] || k)).join(', ')}</b>
+        <small>${esc(r.requester_name || '')} \u00b7 ${esc(ago(r.created_at))}</small></div>
+      <button class="btn sm" data-req="${r.id}">Open</button>
+    </div>`).join('');
+}
+
+$('requestRows').addEventListener('click', e => {
+  const t = e.target.closest('[data-req]'); if (!t) return;
+  openRequest(Number(t.dataset.req));
+});
+
+function openRequest(id){
+  const r = REQUESTS.find(x => x.id === id); if (!r) return;
+  const f = FLATS.find(x => x.id === r.flat_id) || {flat_no:'?'};
+
+  const diff = Object.entries(r.changes).map(([k, v]) => {
+    const before = f[k];
+    const isFile = k.endsWith('_nid_path');
+    const show = val => val
+      ? (isFile ? 'a file' : esc(val))
+      : '<span class="none-txt">empty</span>';
+    return `<tr>
+      <td style="padding:7px 12px 7px 0;color:var(--muted);font-size:12.5px;white-space:nowrap">
+        ${esc(FIELD_LABEL[k] || k)}</td>
+      <td style="padding:7px 12px 7px 0;color:var(--muted)">${show(before)}</td>
+      <td style="padding:7px 0"><b>${show(v)}</b>
+        ${isFile && v ? ` <button class="btn quiet sm" data-preview="documents|${esc(v)}">view</button>` : ''}</td>
+    </tr>`;
+  }).join('');
+
+  layer('drawer', `
+    <div class="dhead">
+      <div><h3>${esc(f.flat_no)}</h3>
+        <div class="mono-sm" style="margin-top:4px">${esc(r.requester_name || '')}
+          \u00b7 ${esc(dateTime(r.created_at))}</div></div>
+      <button class="x" data-close aria-label="Close">\u00d7</button>
+    </div>
+    <div class="dbody">
+      <div class="sectionhead" style="margin-top:0">What they are asking for</div>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <tr><td></td>
+          <td style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)">Now</td>
+          <td style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)">Requested</td></tr>
+        ${diff}
+      </table>
+      ${r.note ? `<div class="msg info" style="margin-top:14px">
+        <span class="ic" aria-hidden="true">i</span><span>${esc(r.note)}</span></div>` : ''}
+      <p class="privacy">Approving writes these values straight onto the flat record.
+        The request itself is kept either way.</p>
+    </div>
+    <div class="dfoot">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn ghost" id="reqNo">Decline</button>
+      <button class="btn" id="reqYes">Approve and apply</button>
+    </div>`);
+
+  $('reqYes').onclick = () => busy($('reqYes'), 'Applying\u2026', async () => {
+    const { error: e1 } = await sb.from('flats').update(r.changes).eq('id', r.flat_id);
+    if (e1) return toast(e1.message, 'err');
+    const { error: e2 } = await sb.from('change_requests').update({
+      status:'approved', decided_by:ME.id, decided_name:ME.full_name || ME.email,
+      decided_at:new Date().toISOString() }).eq('id', r.id);
+    if (e2) return toast(e2.message, 'err');
+    closeLayer(); toast('Applied to ' + f.flat_no);
+    await loadCore(); renderDirectory(); renderIntercom();
+    await loadAdmin(); await loadMine();
+  });
+
+  $('reqNo').onclick = async () => {
+    const res = await confirmDialog({ title:'Decline this request?',
+      body:`<p style="margin:0">The resident for <b>${esc(f.flat_no)}</b> will see that it was declined.</p>`,
+      confirmText:'Decline', danger:true,
+      noteLabel:'Reason (shown to the resident)', noteRequired:true,
+      notePlaceholder:'e.g. please bring the tenancy agreement to the office' });
+    if (!res) return;
+    const { error } = await sb.from('change_requests').update({
+      status:'rejected', decided_by:ME.id, decided_name:ME.full_name || ME.email,
+      decided_at:new Date().toISOString(), decision_note:res.note }).eq('id', r.id);
+    if (error) return toast(error.message, 'err');
+    closeLayer(); toast('Request declined');
+    await loadAdmin();
+  };
+}
+
 /* ----- guards and services ----- */
 function renderAdminContacts(){
   if (!CONTACTS.length){
@@ -2197,39 +2333,182 @@ function renderUsers(){
     return `<div class="row">
       <div class="nm"><b>${esc(u.full_name || '—')}</b>
         <small>${esc(u.email || u.id.slice(0,8))} · ${u.role === 'admin' ? 'Committee' : 'Resident'}</small></div>
-      ${f ? `<span class="badge">${esc(f.flat_no)}</span>` : '<span class="badge">unlinked</span>'}
-      <select data-user="${u.id}" aria-label="Flat for ${esc(u.full_name || u.email || '')}" style="width:150px">
+      <select data-role="${u.id}" aria-label="Role" style="width:118px">
+        <option value="resident"${u.role!=='admin'?' selected':''}>Resident</option>
+        <option value="admin"${u.role==='admin'?' selected':''}>Committee</option>
+      </select>
+      <select data-user="${u.id}" aria-label="Flat for ${esc(u.full_name || u.email || '')}" style="width:140px">
         <option value="">— no flat —</option>
         ${FLATS.map(x => `<option value="${x.id}"${x.id===u.flat_id?' selected':''}>${esc(x.flat_no)}</option>`).join('')}
       </select>
-      <button class="btn sm" data-saveuser="${u.id}">Link</button>
+      <button class="btn sm" data-saveuser="${u.id}">Save</button>
+      <button class="btn ghost sm" data-pw="${u.id}">Password</button>
     </div>`;
   }).join('');
 }
 
+async function callAdminFn(payload){
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch(`${CONFIG.url}/functions/v1/manage-users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+      'apikey': CONFIG.anonKey
+    },
+    body: JSON.stringify(payload)
+  });
+  let out;
+  try { out = await res.json(); } catch { out = { error: 'The server did not reply properly.' }; }
+  if (!res.ok) throw new Error(out.error || `Request failed (${res.status})`);
+  return out;
+}
+
+function suggestPassword(){
+  const words = ['tulip','river','mango','stone','cedar','amber','delta','coral'];
+  const w = words[Math.floor(Math.random()*words.length)];
+  return w + '-' + Math.floor(1000 + Math.random()*9000);
+}
+
+$('newLogin').onclick = () => {
+  const taken = new Set(USERS.map(u => u.flat_id).filter(Boolean));
+  const free = FLATS.filter(f => !f.is_common && !taken.has(f.id));
+
+  layer('drawer', `
+    <div class="dhead"><h3>Create a login</h3>
+      <button class="x" data-close aria-label="Close">\u00d7</button></div>
+    <div class="dbody">
+      <div class="field"><label for="nlFlat">Flat</label>
+        <select id="nlFlat">
+          <option value="">— no flat (committee member) —</option>
+          ${FLATS.filter(f => !f.is_common).map(f =>
+            `<option value="${f.id}"${taken.has(f.id)?' disabled':''}>${esc(f.flat_no)}${
+              taken.has(f.id) ? ' — already has a login' : ''}</option>`).join('')}
+        </select>
+        <div class="help">${free.length} of ${FLATS.filter(f=>!f.is_common).length} flats still need one.</div></div>
+
+      <div class="field"><label for="nlName">Name on the account</label>
+        <input id="nlName" placeholder="e.g. Flat 6A"></div>
+
+      <div class="field"><label for="nlEmail">Email</label>
+        <input id="nlEmail" type="email" autocapitalize="none" spellcheck="false">
+        <div class="help">Does not have to be a real inbox. Picking a flat fills this in for you.</div>
+        <div class="err hidden" id="nlEmailErr"></div></div>
+
+      <div class="field"><label for="nlPass">Password</label>
+        <div class="inline">
+          <input id="nlPass" style="flex:1" value="${suggestPassword()}">
+          <button class="btn ghost sm" id="nlNewPass" type="button">Suggest another</button>
+        </div>
+        <div class="help">Write this down — you are handing it to the resident, and it cannot be
+          read back later. At least 8 characters.</div>
+        <div class="err hidden" id="nlPassErr"></div></div>
+
+      <div class="field"><label for="nlRole">Role</label>
+        <select id="nlRole">
+          <option value="resident">Resident</option>
+          <option value="admin">Committee</option>
+        </select></div>
+    </div>
+    <div class="dfoot">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn" id="nlCreate">Create login</button>
+    </div>`);
+
+  const domain = (CONFIG.building || 'building').toLowerCase().replace(/[^a-z0-9]/g,'') || 'building';
+  $('nlFlat').onchange = () => {
+    const f = FLATS.find(x => String(x.id) === $('nlFlat').value);
+    if (!f) return;
+    $('nlEmail').value = f.flat_no.toLowerCase() + '@' + domain + '.local';
+    if (!$('nlName').value.trim()) $('nlName').value = 'Flat ' + f.flat_no;
+  };
+  $('nlNewPass').onclick = () => { $('nlPass').value = suggestPassword(); };
+
+  $('nlCreate').onclick = () => busy($('nlCreate'), 'Creating\u2026', async () => {
+    const email = $('nlEmail').value.trim(), pass = $('nlPass').value;
+    const emailBad = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+    const passBad = pass.length < 8;
+    $('nlEmailErr').textContent = 'Enter a valid email address.';
+    $('nlEmailErr').classList.toggle('hidden', !emailBad);
+    $('nlPassErr').textContent = 'At least 8 characters.';
+    $('nlPassErr').classList.toggle('hidden', !passBad);
+    if (emailBad || passBad) return;
+
+    try {
+      await callAdminFn({ action:'create', email, password:pass,
+        full_name: $('nlName').value.trim(),
+        flat_id: $('nlFlat').value || null, role: $('nlRole').value });
+    } catch (err){
+      const m = String(err.message);
+      if (m.includes('Failed to fetch'))
+        return toast('Could not reach the manage-users function. Is it deployed?', 'err');
+      return toast(m, 'err');
+    }
+
+    closeLayer();
+    infoDialog('Login created', `
+      <p style="margin-top:0">Hand these to the resident. The password is not stored anywhere
+      you can read it again.</p>
+      <dl class="kv" style="font-size:15px">
+        <dt>Email</dt><dd class="mono-sm" style="font-size:14px">${esc(email)}</dd>
+        <dt>Password</dt><dd class="mono-sm" style="font-size:14px">${esc(pass)}</dd>
+      </dl>
+      <button class="btn ghost sm" data-copy="${esc(email + '  /  ' + pass)}"
+        style="margin-top:12px">Copy both</button>`);
+    await loadAdmin();
+  });
+};
+
 $('userRows').addEventListener('click', async e => {
+  const pw = e.target.closest('[data-pw]');
+  if (pw){
+    const u = USERS.find(x => x.id === pw.dataset.pw);
+    const next = suggestPassword();
+    const res = await confirmDialog({ title:'Set a new password',
+      body:`<p style="margin-top:0">For <b>${esc(u.email || u.full_name || '')}</b>.</p>
+        <div class="field" style="margin-bottom:0"><label for="pwNew">New password</label>
+          <input id="pwNew" value="${next}"></div>
+        <p class="help" style="margin-top:8px">Write it down before you confirm.</p>`,
+      confirmText:'Set password' });
+    if (!res) return;
+    const val = (document.getElementById('pwNew') || {}).value || next;
+    try {
+      await callAdminFn({ action:'reset', user_id:u.id, password:val });
+      infoDialog('Password changed', `<dl class="kv" style="font-size:15px">
+        <dt>Email</dt><dd class="mono-sm" style="font-size:14px">${esc(u.email||'')}</dd>
+        <dt>Password</dt><dd class="mono-sm" style="font-size:14px">${esc(val)}</dd></dl>`);
+    } catch (err){ toast(String(err.message), 'err'); }
+    return;
+  }
+
   const t = e.target.closest('[data-saveuser]'); if (!t) return;
   const id = t.dataset.saveuser;
   const sel = document.querySelector(`select[data-user="${id}"]`).value;
   const u = USERS.find(x => x.id === id);
   const f = FLATS.find(x => String(x.id) === sel);
 
-  const go = await confirmDialog({ title:'Link this account',
+  const role = document.querySelector(`select[data-role="${id}"]`).value;
+  const becomingAdmin = role === 'admin' && u.role !== 'admin';
+
+  const go = await confirmDialog({ title:'Save this account',
     body:`<dl class="kv">
       <dt>Account</dt><dd>${esc(u.full_name || u.email || id)}</dd>
       <dt>Email</dt><dd>${esc(u.email || '—')}</dd>
-      <dt>Flat</dt><dd><b>${f ? esc(f.flat_no) : 'none — unlink'}</b></dd></dl>
-      <p class="help" style="margin-top:12px">The account will be able to edit that flat's details
-      and upload its bills.</p>`,
-    confirmText:'Link account' });
+      <dt>Flat</dt><dd><b>${f ? esc(f.flat_no) : 'none — unlink'}</b></dd>
+      <dt>Role</dt><dd><b>${role === 'admin' ? 'Committee' : 'Resident'}</b></dd></dl>
+      ${becomingAdmin ? `<div class="msg warn" style="margin-top:12px">
+        <span class="ic" aria-hidden="true">\u25b2</span><span>A committee account can see
+        <b>every flat's NID copies</b>, approve requests and manage logins. Give it only to
+        people who need it.</span></div>` : ''}`,
+    confirmText:'Save' });
   if (!go) return;
 
   await busy(t, '', async () => {
     const { error } = await sb.from('profiles')
-      .update({ flat_id: sel === '' ? null : Number(sel) }).eq('id', id);
+      .update({ flat_id: sel === '' ? null : Number(sel), role }).eq('id', id);
     if (error) return toast(error.message, 'err');
-    u.flat_id = sel === '' ? null : Number(sel);
-    renderUsers(); toast('Account linked');
+    u.flat_id = sel === '' ? null : Number(sel); u.role = role;
+    renderUsers(); toast('Account saved');
   });
 });
 </script>
