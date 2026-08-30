@@ -1567,20 +1567,27 @@ $('reqOpen').onclick = () => {
           <input id="rqTPhone" type="tel" value="${esc(f.tenant_phone||'')}">
           <div class="err hidden" id="rqTPhoneErr">Use digits, spaces, + or -.</div></div>
       </div>
-      <div class="sectionhead">Attach a document</div>
+      <div class="sectionhead">Identification</div>
+      <p class="help" style="margin:-4px 0 12px">Attach either or both. Only your flat and the
+        committee can open these.</p>
       <div class="field">
-        <label for="rqFile">NID copy (optional)</label>
-        <div class="filecard" id="fc-rqFile">
-          <input id="rqFile" type="file" accept="image/*,application/pdf">
-          <div class="meta">JPG, PNG or PDF \u00b7 up to 5 MB</div>
+        <label for="rqOwnerNid">Owner NID ${f.owner_nid_path
+          ? '<span class="badge" style="text-transform:none;letter-spacing:0">on file</span>' : ''}</label>
+        <div class="filecard" id="fc-rqOwnerNid">
+          <input id="rqOwnerNid" type="file" accept="image/*,application/pdf">
+          <div class="meta">JPG, PNG or PDF \u00b7 up to 5 MB${
+            f.owner_nid_path ? ' \u00b7 replaces the copy on file' : ''}</div>
           <div class="chosen hidden"></div>
         </div>
-        <div class="field" style="margin-top:9px">
-          <label for="rqWhose">This NID belongs to</label>
-          <select id="rqWhose">
-            <option value="owner_nid_path">The owner</option>
-            <option value="tenant_nid_path">The tenant</option>
-          </select>
+      </div>
+      <div class="field">
+        <label for="rqTenantNid">Tenant NID ${f.tenant_nid_path
+          ? '<span class="badge" style="text-transform:none;letter-spacing:0">on file</span>' : ''}</label>
+        <div class="filecard" id="fc-rqTenantNid">
+          <input id="rqTenantNid" type="file" accept="image/*,application/pdf">
+          <div class="meta">JPG, PNG or PDF \u00b7 up to 5 MB${
+            f.tenant_nid_path ? ' \u00b7 replaces the copy on file' : ''}</div>
+          <div class="chosen hidden"></div>
         </div>
       </div>
       <div class="field">
@@ -1593,7 +1600,8 @@ $('reqOpen').onclick = () => {
       <button class="btn" id="rqSend">Send request</button>
     </div>`);
 
-  wireFilePicker('rqFile');
+  wireFilePicker('rqOwnerNid');
+  wireFilePicker('rqTenantNid');
 
   $('rqSend').onclick = () => busy($('rqSend'), 'Sending\u2026', async () => {
     let bad = false;
@@ -1616,13 +1624,16 @@ $('reqOpen').onclick = () => {
     put('tenant_phone', $('rqTPhone').value);
 
     let attachment = null;
-    const file = $('rqFile').files[0];
-    if (file){
+    for (const [inputId, field, who] of [['rqOwnerNid','owner_nid_path','owner'],
+                                          ['rqTenantNid','tenant_nid_path','tenant']]){
+      const file = $(inputId).files[0];
+      if (!file) continue;
       const safe = file.name.replace(/[^\w.\-]/g,'_');
-      attachment = `${ME.flat_id}/nid/req_${Date.now()}_${safe}`;
-      const { error } = await sb.storage.from('documents').upload(attachment, file);
-      if (error) return toast('Could not upload the file: ' + error.message, 'err');
-      changes[$('rqWhose').value] = attachment;
+      const path = `${ME.flat_id}/nid/req_${who}_${Date.now()}_${safe}`;
+      const { error } = await sb.storage.from('documents').upload(path, file);
+      if (error) return toast(`Could not upload the ${who} NID: ${error.message}`, 'err');
+      changes[field] = path;
+      attachment = attachment || path;
     }
 
     if (!Object.keys(changes).length)
@@ -2347,21 +2358,49 @@ function renderUsers(){
   }).join('');
 }
 
-async function callAdminFn(payload){
-  const { data: { session } } = await sb.auth.getSession();
-  const res = await fetch(`${CONFIG.url}/functions/v1/manage-users`, {
+/* The Supabase dashboard sometimes keeps the ".ts" as part of the function
+   name, which changes the URL. Rather than depend on getting that exactly
+   right, try both and remember whichever answers. */
+const FN_NAMES = ['manage-users', 'manage-users.ts'];
+let fnName = null;
+
+async function postToFn(name, payload, token){
+  return fetch(`${CONFIG.url}/functions/v1/${name}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
+      'Authorization': `Bearer ${token}`,
       'apikey': CONFIG.anonKey
     },
     body: JSON.stringify(payload)
   });
-  let out;
-  try { out = await res.json(); } catch { out = { error: 'The server did not reply properly.' }; }
-  if (!res.ok) throw new Error(out.error || `Request failed (${res.status})`);
-  return out;
+}
+
+async function callAdminFn(payload){
+  const { data: { session } } = await sb.auth.getSession();
+  const token = session.access_token;
+
+  const order = fnName ? [fnName, ...FN_NAMES.filter(n => n !== fnName)] : FN_NAMES;
+  let lastErr = null;
+
+  for (const name of order){
+    let res;
+    try { res = await postToFn(name, payload, token); }
+    catch (e) { lastErr = e; continue; }          // blocked or missing: try the next name
+
+    let out;
+    try { out = await res.json(); } catch { out = {}; }
+
+    // a missing function answers with this shape and no CORS headers
+    if (res.status === 404 || out.code === 'NOT_FOUND'){
+      lastErr = new Error('Failed to fetch'); continue;
+    }
+    if (!res.ok) throw new Error(out.error || `Request failed (${res.status})`);
+
+    fnName = name;                                 // remember what worked
+    return out;
+  }
+  throw lastErr || new Error('Failed to fetch');
 }
 
 function suggestPassword(){
@@ -2440,8 +2479,27 @@ $('newLogin').onclick = () => {
         flat_id: $('nlFlat').value || null, role: $('nlRole').value });
     } catch (err){
       const m = String(err.message);
-      if (m.includes('Failed to fetch'))
-        return toast('Could not reach the manage-users function. Is it deployed?', 'err');
+      if (m.includes('Failed to fetch') || m.includes('NetworkError')){
+        closeLayer();
+        return infoDialog('The manage-users function is not reachable', `
+          <p style="margin-top:0">The browser could not get a reply from it. When a function is
+          missing, Supabase's 404 arrives without the headers a browser needs, so this is the
+          only error JavaScript ever sees \u2014 it cannot tell "not deployed" from "offline".</p>
+          <p><b>Check it directly:</b></p>
+          <p>${FN_NAMES.map(n => `<a href="${CONFIG.url}/functions/v1/${n}" target="_blank"
+             rel="noopener" class="mono-sm" style="font-size:13px;display:block;margin-bottom:4px"
+             >${CONFIG.url}/functions/v1/${n}</a>`).join('')}</p>
+          <p class="help">Both names are tried automatically, so either will work.</p>
+          <ul style="font-size:14px;padding-left:20px;line-height:1.6">
+            <li><b>404 or "Function not found"</b> \u2014 it is not deployed, or the name differs.
+              It must be exactly <code>manage-users</code>.</li>
+            <li><b>{"error":"Not signed in."}</b> \u2014 it is working, and something else is wrong.
+              Send me what you see.</li>
+          </ul>
+          <p class="help">Until it is deployed you can still create logins the original way:
+          Supabase \u2192 Authentication \u2192 Users \u2192 Add user, with Auto Confirm User ticked,
+          then link the account to its flat here.</p>`);
+      }
       return toast(m, 'err');
     }
 
@@ -2477,7 +2535,12 @@ $('userRows').addEventListener('click', async e => {
       infoDialog('Password changed', `<dl class="kv" style="font-size:15px">
         <dt>Email</dt><dd class="mono-sm" style="font-size:14px">${esc(u.email||'')}</dd>
         <dt>Password</dt><dd class="mono-sm" style="font-size:14px">${esc(val)}</dd></dl>`);
-    } catch (err){ toast(String(err.message), 'err'); }
+    } catch (err){
+      const m = String(err.message);
+      toast(m.includes('Failed to fetch')
+        ? 'The manage-users function is not reachable \u2014 see Create a login for how to check it.'
+        : m, 'err');
+    }
     return;
   }
 
