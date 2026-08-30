@@ -383,7 +383,10 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 </head>
 <body>
 
-<div id="boot"><div><div class="bootspin"></div>Loading the register…</div></div>
+<div id="boot"><div style="max-width:440px;text-align:center">
+  <div class="bootspin"></div>
+  <div id="bootMsg">Loading the register…</div>
+</div></div>
 
 <!-- ==================== LOGIN ==================== -->
 <div id="login" class="hidden">
@@ -719,13 +722,63 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* ===== boot safety net ==============================================
+   If anything throws while the page is setting itself up, the spinner
+   would otherwise turn forever with nothing on screen. Say what happened
+   instead — the message is what to send on when asking for help. */
+(function(){
+  var shown = false;
+  function fail(what, detail){
+    if (shown) return; shown = true;
+    var spin = document.querySelector('.bootspin');
+    if (spin) spin.style.display = 'none';
+    var box = document.getElementById('bootMsg');
+    if (!box) return;
+    box.innerHTML = '<div style="color:#9c2f2f;font-weight:500;margin-bottom:8px">'
+      + what + '</div>'
+      + '<div style="font-family:ui-monospace,monospace;font-size:12.5px;color:#6b7370;'
+      + 'background:#fff;border:1px solid #dddbd2;border-radius:5px;padding:10px;'
+      + 'text-align:left;overflow:auto;max-height:180px">' + detail + '</div>'
+      + '<button onclick="location.reload()" style="margin-top:14px;padding:9px 16px;'
+      + 'border-radius:5px;border:1px solid #145c4e;background:#145c4e;color:#fff;'
+      + 'font:inherit;cursor:pointer">Reload</button>';
+  }
+  window.addEventListener('error', function(e){
+    fail('The page could not start.',
+         (e.message || 'Unknown error') +
+         (e.filename ? '<br>' + String(e.filename).split('/').pop() + ':' + e.lineno : ''));
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    fail('Something failed while loading your data.',
+         String((e.reason && e.reason.message) || e.reason || 'Unknown'));
+  });
+  if (typeof supabase === 'undefined'){
+    fail('Could not load the Supabase library.',
+         'The script from cdn.jsdelivr.net did not load. Check the connection, then reload.');
+  }
+  setTimeout(function(){
+    var boot = document.getElementById('boot');
+    if (boot && !boot.classList.contains('hidden')){
+      fail('This is taking longer than expected.',
+           'The database has not replied. It may be paused, or the connection may be down. '
+           + 'Open the Supabase dashboard and check the project is Active.');
+    }
+  }, 12000);
+})();
+
 /* =====================================================================
    CONFIG — Supabase → Settings → API Keys (publishable key)
    ===================================================================== */
 const CONFIG = {
   url:      'https://dzvcucceooevdjnfkunt.supabase.co',
   anonKey:  'sb_publishable_hBFkEbi_Mx9wXLrZ2pMUzg_8kh3g_bu',
-  building: 'Mayaz Home LTD'
+  building: 'Mayaz Home LTD',
+
+  // Name of the Edge Function that creates logins, exactly as it appears in
+  // Supabase → Edge Functions. The dashboard invents a name like
+  // 'hyper-responder' if you do not set one, and that name is what the URL
+  // uses — so copy it from that list rather than assuming.
+  userFunction: 'hyper-responder'
 };
 
 /* ===== helpers ===================================================== */
@@ -2361,7 +2414,8 @@ function renderUsers(){
 /* The Supabase dashboard sometimes keeps the ".ts" as part of the function
    name, which changes the URL. Rather than depend on getting that exactly
    right, try both and remember whichever answers. */
-const FN_NAMES = ['manage-users', 'manage-users.ts'];
+const FN_NAMES = [CONFIG.userFunction, 'manage-users', 'manage-users.ts']
+  .filter((n, i, a) => n && a.indexOf(n) === i);
 let fnName = null;
 
 async function postToFn(name, payload, token){
@@ -2489,7 +2543,9 @@ $('newLogin').onclick = () => {
           <p>${FN_NAMES.map(n => `<a href="${CONFIG.url}/functions/v1/${n}" target="_blank"
              rel="noopener" class="mono-sm" style="font-size:13px;display:block;margin-bottom:4px"
              >${CONFIG.url}/functions/v1/${n}</a>`).join('')}</p>
-          <p class="help">Both names are tried automatically, so either will work.</p>
+          <p class="help">These are tried in order. If your function has a different name,
+            open Supabase \u2192 Edge Functions, copy the name from the list, and put it in the
+            <code>userFunction</code> line of the CONFIG block in index.html.</p>
           <ul style="font-size:14px;padding-left:20px;line-height:1.6">
             <li><b>404 or "Function not found"</b> \u2014 it is not deployed, or the name differs.
               It must be exactly <code>manage-users</code>.</li>
