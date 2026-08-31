@@ -574,6 +574,11 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
           <h3 style="font-size:15px">Your past requests</h3>
           <div class="rows" id="myRequests" style="margin-top:8px"></div>
         </div>
+        <div class="block" style="margin-top:22px">
+          <h3 style="font-size:15px">What has changed</h3>
+          <p class="sub" style="margin-bottom:8px">Every change to this record, kept permanently.</p>
+          <div class="panel" id="myHistory"></div>
+        </div>
       </div>
 
       <div class="block narrow">
@@ -1538,11 +1543,51 @@ document.addEventListener('click', e => {
   input.value = ''; input.dispatchEvent(new Event('change'));
 });
 
+/* ===== flat record history ========================================= */
+async function flatHistory(flatId, targetId, limit){
+  const el = $(targetId); if (!el) return;
+  el.innerHTML = '<div class="skel skelrow" style="height:38px"></div>';
+
+  let q = sb.from('flat_events').select('*')
+    .eq('flat_id', flatId).order('created_at', {ascending:false});
+  if (limit) q = q.limit(limit);
+  const { data, error } = await q;
+
+  if (error){ el.innerHTML = '<p class="help">Could not load the history.</p>'; return; }
+  if (!data || !data.length){ el.innerHTML = '<p class="help">Nothing recorded yet.</p>'; return; }
+
+  const show = (field, val) => {
+    if (val == null || val === '') return '<span class="none-txt">empty</span>';
+    if (field.endsWith('_nid_path'))
+      return `<button class="btn quiet sm" data-preview="documents|${esc(val)}"
+        style="padding:1px 6px">open file</button>`;
+    return esc(val);
+  };
+
+  el.innerHTML = `<ul class="timeline">${data.map(e => `
+    <li>
+      <div><b>${esc(FIELD_LABEL[e.field] || e.field)}</b>
+        ${e.old_value === null && e.actor_name === 'initial record'
+          ? '<span class="badge" style="margin-left:6px">first recorded</span>'
+          : ''}</div>
+      ${e.actor_name === 'initial record' ? `<div>${show(e.field, e.new_value)}</div>` : `
+       <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
+         <span style="color:var(--muted);text-decoration:line-through">${show(e.field, e.old_value)}</span>
+         <span aria-hidden="true" style="color:var(--faint)">\u2192</span>
+         <span>${show(e.field, e.new_value)}</span>
+       </div>`}
+      <div class="when">${esc(dateTime(e.created_at))}
+        ${e.actor_name && e.actor_name !== 'initial record' ? '\u00b7 ' + esc(e.actor_name) : ''}
+        ${e.source === 'dashboard' && e.actor_name !== 'initial record' ? '\u00b7 dashboard' : ''}</div>
+    </li>`).join('')}</ul>`;
+}
+
 /* ===== my flat ===================================================== */
 const FIELD_LABEL = {
-  owner_name:'Owner name', phone:'Owner phone',
+  owner_name:'Owner name', phone:'Owner phone', alt_phone:'Alternative phone',
   tenant_name:'Tenant name', tenant_phone:'Tenant phone',
-  owner_nid_path:'Owner NID', tenant_nid_path:'Tenant NID'
+  owner_nid_path:'Owner NID', tenant_nid_path:'Tenant NID',
+  flat_no:'Flat number', meter_no:'Meter number', intercom:'Intercom extension'
 };
 let MY_REQUESTS = [];
 
@@ -1727,6 +1772,7 @@ async function loadMine(){
     .eq('flat_id', f.id).order('created_at', {ascending:false});
   MY_REQUESTS = reqs || [];
   renderMyRequests();
+  flatHistory(f.id, 'myHistory', 25);
 
   $('mineRows').innerHTML = '<div class="skel skelrow"></div>'.repeat(3);
   const { data: bills, error } = await sb.from('bills').select('*')
@@ -2153,11 +2199,17 @@ function openFlatEditor(id){
       </div>
       <p class="privacy">Residents upload their own NID from the My flat page.
         The committee can view them but not replace them here.</p>
+      <div class="sectionhead">History</div>
+      <p class="help" style="margin:-4px 0 8px">Every change to this record, whoever made it.
+        Nobody can edit or remove an entry.</p>
+      <div id="efHistory"></div>
     </div>
     <div class="dfoot">
       <button class="btn ghost" data-close>Cancel</button>
       <button class="btn" id="efSave">Save changes</button>
     </div>`);
+
+  flatHistory(id, 'efHistory');
 
   $('efSave').onclick = () => busy($('efSave'), 'Saving…', async () => {
     let bad = false;
@@ -2587,10 +2639,17 @@ $('userRows').addEventListener('click', async e => {
     if (!res) return;
     const val = (document.getElementById('pwNew') || {}).value || next;
     try {
-      await callAdminFn({ action:'reset', user_id:u.id, password:val });
+      const out = await callAdminFn({ action:'reset', user_id:u.id, password:val });
       infoDialog('Password changed', `<dl class="kv" style="font-size:15px">
         <dt>Email</dt><dd class="mono-sm" style="font-size:14px">${esc(u.email||'')}</dd>
-        <dt>Password</dt><dd class="mono-sm" style="font-size:14px">${esc(val)}</dd></dl>`);
+        <dt>Password</dt><dd class="mono-sm" style="font-size:14px">${esc(val)}</dd></dl>
+        <div class="msg ${out && out.sessions_revoked ? 'ok' : 'warn'}" style="margin-top:14px">
+          <span class="ic" aria-hidden="true">${out && out.sessions_revoked ? '\u2713' : '\u25b2'}</span>
+          <span>${out && out.sessions_revoked
+            ? 'Any device already signed in with the old password has been signed out.'
+            : 'The password is changed, but devices already signed in may stay signed in. Redeploy the login function to enable session revocation.'}</span></div>
+        <button class="btn ghost sm" data-copy="${esc((u.email||'') + '  /  ' + val)}"
+          style="margin-top:12px">Copy both</button>`);
     } catch (err){
       const m = String(err.message);
       toast(m.includes('Failed to fetch')
