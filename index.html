@@ -591,6 +591,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
             <label for="upPeriod">1 · Bill month</label>
             <input id="upPeriod" type="month">
             <div class="help" id="upPeriodNote"></div>
+            <div id="upMonthNote" style="margin-top:9px"></div>
           </div>
           <div class="field">
             <label for="upAmount">2 · Bill amount</label>
@@ -1780,7 +1781,32 @@ async function loadMine(){
   if (error){ banner($('mineRows'), 'Could not load your bills.', 'err'); return; }
 
   const cur = (bills||[]).find(b => b.period === $('upPeriod').value);
-  if (cur && cur.amount != null && $('upAmount').value === '') $('upAmount').value = cur.amount;
+  const label = monthLabel($('upPeriod').value);
+
+  if ($('upAmount').value === '')
+    $('upAmount').value = (cur && cur.amount != null) ? cur.amount : '';
+
+  const verified = cur && cur.status === 'verified';
+  $('upAmount').readOnly = !!verified;
+  $('upAmount').style.background = verified ? 'var(--sunk)' : '';
+
+  if (verified){
+    banner($('upMonthNote'),
+      `<b>${esc(label)} is already verified</b> at ${money(cur.amount)}. You cannot change the
+       amount yourself \u2014 ask the committee if it is wrong. Uploading a clearer copy is fine.`,
+      'ok');
+  } else if (cur && cur.status === 'submitted'){
+    banner($('upMonthNote'),
+      `<b>${esc(label)} is already with the committee</b> for ${money(cur.amount)}.
+       Submitting again replaces what they have.`, 'info');
+  } else if (!cur){
+    banner($('upMonthNote'),
+      `The committee has not opened <b>${esc(label)}</b> yet. You can still submit, and it will
+       be waiting for them.`, 'warn');
+  } else {
+    banner($('upMonthNote'), '');
+  }
+
   renderRejectNotice(bills || []);
   renderUploadSummary(cur);
 
@@ -1806,7 +1832,20 @@ function renderRejectNotice(bills){
     : '', 'warn');
 }
 
-$('upPeriod').onchange = () => loadMine();
+$('upPeriod').onchange = () => {
+  // Everything in this panel belongs to the month that was selected a moment
+  // ago. Carrying an amount or a file across to a different month is how a
+  // wrong figure gets submitted without anyone noticing.
+  $('upAmount').value = '';
+  $('upAmount').setAttribute('aria-invalid','false');
+  $('upAmountErr').classList.add('hidden');
+  if (upFiles.length){
+    upFiles = []; renderUpFiles();
+    toast('Attached files cleared — they belonged to the previous month');
+  }
+  $('upSummary').innerHTML = '';
+  loadMine();
+};
 
 function renderUploadSummary(cur){
   const period = $('upPeriod').value;
@@ -1841,7 +1880,7 @@ $('upBtn').onclick = () => busy($('upBtn'), 'Uploading…', async () => {
 
   if (!upFiles.length) return toast('Attach at least one bill copy', 'err');
 
-  const { data: existing } = await sb.from('bills').select('id,receipt_path,status')
+  const { data: existing } = await sb.from('bills').select('id,receipt_path,status,amount')
     .eq('flat_id', ME.flat_id).eq('period', period).maybeSingle();
 
   if (existing && existing.status === 'verified'){
@@ -1862,9 +1901,14 @@ $('upBtn').onclick = () => busy($('upBtn'), 'Uploading…', async () => {
     paths.push(path);
   }
 
+  // The database refuses an amount change on a verified bill. Keep the agreed
+  // figure so a resident replacing a blurred copy is not rejected outright.
+  const patch = existing && existing.status === 'verified'
+    ? { status:'submitted', receipt_paths:paths }
+    : { status:'submitted', receipt_paths:paths, amount };
+
   const err = existing
-    ? (await sb.from('bills').update({status:'submitted', receipt_paths:paths, amount})
-         .eq('id', existing.id)).error
+    ? (await sb.from('bills').update(patch).eq('id', existing.id)).error
     : (await sb.from('bills').insert({flat_id:ME.flat_id, period, status:'submitted',
          receipt_paths:paths, amount})).error;
   if (err) return toast('Saved the file but could not update the bill: ' + err.message, 'err');
