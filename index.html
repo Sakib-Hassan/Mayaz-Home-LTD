@@ -333,6 +333,34 @@ img.preview{object-fit:contain;display:block}
 .bootspin{width:26px;height:26px;border:2.5px solid var(--line);border-top-color:var(--accent);
   border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
 
+/* ===== notices =================================================== */
+.notice{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:var(--r);padding:12px 15px;margin-bottom:8px}
+.notice.pin{border-left-color:var(--warn);background:#fffdf8}
+.notice .nt{font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.notice .nb{font-size:13.5px;color:var(--ink-2);margin-top:4px;white-space:pre-wrap}
+.notice .nm{font-size:11.5px;color:var(--faint);margin-top:7px;font-family:var(--mono)}
+.notice .new{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;background:var(--accent);
+  color:#fff;border-radius:3px;padding:1px 6px}
+.notice .pinflag{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn);
+  border:1px solid var(--warn-line);background:var(--warn-bg);border-radius:3px;padding:1px 6px}
+
+.notice .files{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.notice .shot{width:92px;height:70px;object-fit:cover;border-radius:4px;border:1px solid var(--line);
+  cursor:pointer;background:var(--sunk);display:block}
+.notice .shot:hover{border-color:var(--accent)}
+.filerow{display:flex;gap:9px;align-items:center;margin-top:7px;font-size:13px;
+  padding:7px 9px;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r)}
+.filerow .fn{flex:1;font-family:var(--mono);font-size:12px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== building footer =========================================== */
+.buildfoot{border-top:1px solid var(--line);margin-top:34px;padding-top:14px;
+  display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.buildfoot a{text-decoration:none}
+.addrcard{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.addrcard .who{flex:1;min-width:180px}
+
 /* ===== intercom board ============================================ */
 .extgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px}
 .ext-cell{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
@@ -472,6 +500,8 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
         </div>
       </div>
 
+      <div id="noticeBoard"></div>
+
       <div class="toolbar">
         <div class="field w-sm">
           <label for="period">Month</label>
@@ -507,6 +537,11 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
       <div class="pagehead">
         <div><h2>Phone index</h2>
         <p class="sub">Guards, services and every flat in the building.</p></div>
+      </div>
+
+      <div class="block" id="addrBlock">
+        <h3>The building</h3>
+        <div class="panel" id="addrCard" style="margin-top:10px"></div>
       </div>
 
       <div class="block">
@@ -689,6 +724,33 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 
       <div class="block">
         <div class="pagehead" style="margin-bottom:2px">
+          <h3>Notice board</h3>
+          <div class="acts"><button class="btn sm" id="addNotice">Post a notice</button></div>
+        </div>
+        <p class="sub">Shown at the top of the bill board for every resident.</p>
+        <div class="rows" id="adminNotices"></div>
+      </div>
+
+      <div class="block narrow">
+        <h3>Building address</h3>
+        <p class="sub">Shown in the phone index and at the foot of every page.</p>
+        <div class="panel">
+          <div class="field">
+            <label for="setAddress">Address</label>
+            <input id="setAddress" placeholder="House 12, Road 4, Banani, Dhaka">
+          </div>
+          <div class="field">
+            <label for="setMaps">Google Maps link</label>
+            <input id="setMaps" placeholder="https://maps.app.goo.gl/...">
+            <div class="help">Open the building in Google Maps, tap Share, and paste the link.</div>
+            <div class="err hidden" id="setMapsErr">Must start with https://</div>
+          </div>
+          <button class="btn" id="setSave">Save</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="pagehead" style="margin-bottom:2px">
           <h3>Guards and services</h3>
           <div class="acts"><button class="btn sm" id="addContact">Add a contact</button></div>
         </div>
@@ -720,6 +782,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
         <div class="rows" id="userRows"></div>
       </div>
     </section>
+    <div class="buildfoot" id="buildFoot"></div>
   </main>
 </div>
 
@@ -824,6 +887,7 @@ const PHONE_OK = v => !v || /^[0-9+\-\s()]{6,20}$/.test(v);
 
 /* ===== state ======================================================= */
 let ME = null, FLATS = [], CONTACTS = [], BILLS = {}, QUEUE = [], USERS = [], REQUESTS = [];
+let NOTICES = [], SETTINGS = {};
 let lastSync = null;
 const F = { search:'', block:'all', onlyMine:false, showCommon:true, status:null,
             dirSearch:'', dirBlock:'all', occ:'all', mode:'cards',
@@ -1026,6 +1090,7 @@ async function start(){
     $('period').value = $('upPeriod').value = $('genPeriod').value = thisMonth();
     buildBlockFilters();
     renderContacts(); renderIntercom(); renderDirectory();
+    await renderNotices(); renderBuilding();
     await loadBoard();
     await loadMine();
     if (ME.role === 'admin') await loadAdmin();
@@ -1043,12 +1108,16 @@ async function start(){
 }
 
 async function loadCore(){
-  const [{ data:flats, error:e1 }, { data:contacts }] = await Promise.all([
-    sb.from('flats').select('*').order('is_common').order('block').order('flat_number'),
-    sb.from('contacts').select('*').order('sort_order')
-  ]);
+  const [{ data:flats, error:e1 }, { data:contacts }, { data:notices }, { data:settings }] =
+    await Promise.all([
+      sb.from('flats').select('*').order('is_common').order('block').order('flat_number'),
+      sb.from('contacts').select('*').order('sort_order'),
+      sb.from('notices').select('*').order('pinned', {ascending:false}).order('created_at', {ascending:false}),
+      sb.from('settings').select('*')
+    ]);
   if (e1) throw e1;
-  FLATS = flats || []; CONTACTS = contacts || [];
+  FLATS = flats || []; CONTACTS = contacts || []; NOTICES = notices || [];
+  SETTINGS = Object.fromEntries((settings || []).map(r => [r.key, r.value]));
 }
 
 function markSync(){ lastSync = Date.now(); paintSync(); }
@@ -1062,6 +1131,7 @@ setInterval(paintSync, 30000);
 
 $('refreshBtn').onclick = () => busy($('refreshBtn'), '', async () => {
   await loadCore(); renderContacts(); renderIntercom(); renderDirectory();
+  await renderNotices(); renderBuilding();
   await loadBoard(); await loadMine();
   if (ME.role === 'admin') await loadAdmin();
   markSync(); toast('Refreshed');
@@ -1340,6 +1410,149 @@ document.addEventListener('click', async e => {
          style="margin-top:6px">Open in a new tab</a>`);
   });
 });
+
+/* ===== notices ===================================================== */
+const liveNotices = () => {
+  const today = new Date().toISOString().slice(0,10);
+  return NOTICES.filter(n =>
+    (!n.starts_at  || n.starts_at  <= today) &&
+    (!n.expires_at || n.expires_at >= today));
+};
+
+/* "New" is remembered on this device only. Nothing per-user is stored on the
+   server, which would need a table and a write on every page view. */
+function seenKey(){ return 'notices-seen-' + (ME ? ME.id : 'x'); }
+function lastSeen(){ try { return localStorage.getItem(seenKey()) || ''; } catch { return ''; } }
+function markSeen(){
+  try {
+    const newest = liveNotices().map(n => n.created_at).sort().pop();
+    if (newest) localStorage.setItem(seenKey(), newest);
+  } catch {}
+}
+
+let SIGNED = {};                       // attachment path -> signed url
+
+const isImage = p => /\.(jpe?g|png|gif|webp|bmp)$/i.test(p);
+const fileName = p => decodeURIComponent(String(p).split('/').pop().replace(/^\d+_\d+_/, ''));
+
+/* One batched call for every attachment on screen, rather than one per file. */
+async function signNoticeFiles(notices){
+  const paths = notices.flatMap(n => n.attachments || []).filter(p => !SIGNED[p]);
+  if (!paths.length) return;
+  const { data } = await sb.storage.from('notices').createSignedUrls(paths, 3600);
+  (data || []).forEach(r => { if (r.signedUrl) SIGNED[r.path] = r.signedUrl; });
+}
+
+function noticeFilesHtml(n){
+  const files = n.attachments || [];
+  if (!files.length) return '';
+  const imgs = files.filter(isImage), docs = files.filter(p => !isImage(p));
+  return `<div class="files">
+      ${imgs.map(p => SIGNED[p]
+        ? `<img class="shot" src="${SIGNED[p]}" alt="${esc(fileName(p))}"
+             data-full="${esc(p)}" loading="lazy">`
+        : `<span class="shot"></span>`).join('')}
+    </div>
+    ${docs.map(p => `<div class="filerow">
+      <span aria-hidden="true">\u25a4</span>
+      <span class="fn">${esc(fileName(p))}</span>
+      <button class="btn ghost sm" data-full="${esc(p)}">Open</button>
+    </div>`).join('')}`;
+}
+
+function noticeHtml(n, since){
+  return `<div class="notice ${n.pinned ? 'pin' : ''}">
+      <div class="nt">${esc(n.title)}
+        ${n.pinned ? '<span class="pinflag">pinned</span>' : ''}
+        ${since && n.created_at > since ? '<span class="new">new</span>' : ''}</div>
+      ${n.body ? `<div class="nb">${esc(n.body)}</div>` : ''}
+      ${noticeFilesHtml(n)}
+      <div class="nm">${esc(dateTime(n.created_at))}${
+        n.created_name ? ' \u00b7 ' + esc(n.created_name) : ''}${
+        n.expires_at ? ' \u00b7 until ' + esc(n.expires_at) : ''}</div>
+    </div>`;
+}
+
+async function renderNotices(){
+  const live = liveNotices();
+  const since = lastSeen();
+  if (!live.length){ $('noticeBoard').innerHTML = ''; return; }
+
+  const show = live.slice(0, 3), rest = live.length - show.length;
+  $('noticeBoard').innerHTML = show.map(n => noticeHtml(n, since)).join('') +
+    (rest > 0 ? `<button class="btn quiet sm" id="moreNotices">Show ${rest} older notice${
+      rest===1?'':'s'}</button>` : '');
+
+  const more = $('moreNotices');
+  if (more) more.onclick = async () => {
+    await signNoticeFiles(live);
+    infoDialog('All notices', live.map(n => noticeHtml(n, '')).join(''));
+  };
+
+  markSeen();
+
+  // fetch the links, then redraw so the pictures appear
+  await signNoticeFiles(show);
+  $('noticeBoard').innerHTML = show.map(n => noticeHtml(n, since)).join('') +
+    (rest > 0 ? `<button class="btn quiet sm" id="moreNotices">Show ${rest} older notice${
+      rest===1?'':'s'}</button>` : '');
+  const more2 = $('moreNotices');
+  if (more2) more2.onclick = async () => {
+    await signNoticeFiles(live);
+    infoDialog('All notices', live.map(n => noticeHtml(n, '')).join(''));
+  };
+}
+
+/* open an attachment full size */
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-full]'); if (!t) return;
+  const path = t.dataset.full;
+  let url = SIGNED[path];
+  if (!url){
+    const { data, error } = await sb.storage.from('notices').createSignedUrl(path, 600);
+    if (error) return toast('Could not open that file: ' + error.message, 'err');
+    url = data.signedUrl; SIGNED[path] = url;
+  }
+  if (isImage(path))
+    infoDialog(fileName(path),
+      `<img class="preview" src="${url}" alt="${esc(fileName(path))}">
+       <a class="btn ghost sm" href="${url}" target="_blank" rel="noopener"
+          style="margin-top:10px">Open in a new tab</a>`);
+  else
+    window.open(url, '_blank', 'noopener');
+});
+
+/* ===== building address ============================================ */
+function renderBuilding(){
+  const addr = SETTINGS.address, maps = SETTINGS.maps_url;
+
+  if (!addr && !maps){
+    $('addrCard').innerHTML = `<p class="help" style="margin:0">${ME.role === 'admin'
+      ? 'Add the address and a Google Maps link in the Committee tab.'
+      : 'The committee has not added the address yet.'}</p>`;
+    $('buildFoot').innerHTML = '';
+    return;
+  }
+
+  $('addrCard').innerHTML = `
+    <div class="addrcard">
+      <div class="who">
+        <div class="lbl" style="margin-bottom:3px">Address</div>
+        <div style="font-size:14.5px">${addr ? esc(addr) : '<span class="none-txt">not recorded</span>'}</div>
+      </div>
+      <div class="inline">
+        ${maps ? `<a class="btn ghost sm" href="${esc(maps)}" target="_blank" rel="noopener">Open in Maps</a>` : ''}
+        ${maps ? `<button class="btn ghost sm" data-copy="${esc(maps)}">Copy link</button>` : ''}
+        ${addr ? `<button class="btn ghost sm" data-copy="${esc(addr)}">Copy address</button>` : ''}
+      </div>
+    </div>
+    <p class="privacy">Useful when directing a delivery, a guest or a repair visit.</p>`;
+
+  $('buildFoot').innerHTML = `
+    <span>${esc(CONFIG.building)}</span>
+    ${addr ? `<span>\u00b7 ${esc(addr)}</span>` : ''}
+    ${maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener">Open in Maps</a>` : ''}`;
+}
 
 /* ===== directory =================================================== */
 const telLink = p => p ? `<a class="tel" href="tel:${esc(p)}">${esc(p)}</a>`
@@ -1961,7 +2174,8 @@ async function loadAdmin(){
   $('mReq').onclick = () => $('requestRows').scrollIntoView({behavior:'smooth', block:'center'});
   $('mQueue').onclick = () => $('queueRows').scrollIntoView({behavior:'smooth', block:'center'});
 
-  renderQueue(); renderRequests(); renderAdminFlats(); renderAdminContacts(); renderUsers();
+  renderQueue(); renderRequests(); renderAdminFlats(); renderAdminContacts();
+  renderAdminNotices(); renderAdminBuilding(); renderUsers();
 }
 
 function queueRows(){
@@ -2275,6 +2489,212 @@ function openFlatEditor(id){
     closeLayer(); toast(f.flat_no + ' updated');
   });
 }
+
+/* ----- notice board (committee) ----- */
+function renderAdminNotices(){
+  const today = new Date().toISOString().slice(0,10);
+  if (!NOTICES.length){
+    $('adminNotices').innerHTML = `<div class="empty">
+      <div class="t">No notices yet</div>
+      <div>Post one and every resident sees it at the top of the bill board.</div></div>`;
+    return;
+  }
+  $('adminNotices').innerHTML = NOTICES.map(n => {
+    const expired = n.expires_at && n.expires_at < today;
+    const pending = n.starts_at && n.starts_at > today;
+    return `<div class="row">
+      <div class="nm"><b>${esc(n.title)}</b>
+        <small>${esc(dateTime(n.created_at))}${
+          n.created_name ? ' \u00b7 ' + esc(n.created_name) : ''}</small></div>
+      ${n.attachments && n.attachments.length
+        ? `<span class="badge">${n.attachments.length} file${
+            n.attachments.length===1?'':'s'}</span>` : ''}
+      ${n.pinned ? '<span class="badge">pinned</span>' : ''}
+      ${expired ? '<span class="badge">expired</span>'
+        : pending ? `<span class="badge">from ${esc(n.starts_at)}</span>`
+        : '<span class="badge rented">live</span>'}
+      <button class="btn ghost sm" data-editnotice="${n.id}">Edit</button>
+    </div>`;
+  }).join('');
+}
+
+$('addNotice').onclick = () => openNoticeEditor(null);
+$('adminNotices').addEventListener('click', e => {
+  const t = e.target.closest('[data-editnotice]'); if (!t) return;
+  openNoticeEditor(Number(t.dataset.editnotice));
+});
+
+function openNoticeEditor(id){
+  const n = id ? NOTICES.find(x => x.id === id) : null;
+  layer('drawer', `
+    <div class="dhead"><h3>${n ? 'Edit notice' : 'Post a notice'}</h3>
+      <button class="x" data-close aria-label="Close">\u00d7</button></div>
+    <div class="dbody">
+      <div class="field"><label for="ntTitle">Title</label>
+        <input id="ntTitle" value="${esc(n ? n.title : '')}"
+               placeholder="e.g. Water pump maintenance on Friday">
+        <div class="err hidden" id="ntTitleErr">A title is required.</div></div>
+      <div class="field"><label for="ntBody">Details</label>
+        <textarea id="ntBody" rows="5"
+          placeholder="Anything residents need to know">${esc(n ? (n.body||'') : '')}</textarea></div>
+      <div class="row2">
+        <div class="field"><label for="ntFrom">Show from</label>
+          <input id="ntFrom" type="date" value="${esc(n ? (n.starts_at||'') : '')}">
+          <div class="help">Blank = immediately</div></div>
+        <div class="field"><label for="ntUntil">Show until</label>
+          <input id="ntUntil" type="date" value="${esc(n ? (n.expires_at||'') : '')}">
+          <div class="help">Blank = until removed</div></div>
+      </div>
+      <div class="sectionhead">Attachments</div>
+      <div class="field">
+        <label for="ntFiles">Images or PDFs</label>
+        <div class="filecard" id="fc-ntFiles">
+          <input id="ntFiles" type="file" accept="image/*,application/pdf" multiple>
+          <div class="meta">JPG, PNG or PDF \u00b7 up to 5 MB each \u00b7 up to 5 files</div>
+          <div id="ntFileList"></div>
+        </div>
+      </div>
+
+      <label class="switch">
+        <input type="checkbox" id="ntPin" ${n && n.pinned ? 'checked' : ''}>
+        <span class="track" aria-hidden="true"></span>
+        <span class="txt">Pin to the top</span>
+      </label>
+      <p class="privacy">Every resident sees this on the bill board. Keep it short \u2014 anything
+        long is better sent to the building group.</p>
+    </div>
+    <div class="dfoot">
+      ${n ? '<div class="left"><button class="btn danger" id="ntDelete">Remove</button></div>' : ''}
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn" id="ntSave">${n ? 'Save changes' : 'Post notice'}</button>
+    </div>`);
+
+  /* files already stored on this notice, plus any newly chosen this session */
+  let ntKeep = n && n.attachments ? [...n.attachments] : [];
+  let ntNew  = [];
+  const NT_MAX = 5;
+
+  function renderNtFiles(){
+    const box = $('ntFileList');
+    const total = ntKeep.length + ntNew.length;
+    $('fc-ntFiles').classList.toggle('has', total > 0);
+    box.innerHTML =
+      ntKeep.map((p, i) => `<div class="chosen">
+        <span style="font-size:18px" aria-hidden="true">${isImage(p) ? '\u25a3' : '\u25a4'}</span>
+        <span class="fn">${esc(fileName(p))}</span>
+        <span class="mono-sm">stored</span>
+        <button class="btn quiet sm" type="button" data-ntdrop="k${i}">remove</button>
+      </div>`).join('') +
+      ntNew.map((f, i) => `<div class="chosen">
+        ${f.type.startsWith('image/')
+          ? `<img class="thumb" alt="" src="${URL.createObjectURL(f)}">`
+          : '<span style="font-size:18px" aria-hidden="true">\u25a4</span>'}
+        <span class="fn">${esc(f.name)}</span>
+        <span class="mono-sm">${kb(f.size)}</span>
+        <button class="btn quiet sm" type="button" data-ntdrop="n${i}">remove</button>
+      </div>`).join('') +
+      (total ? `<div class="help" style="margin-top:7px">${total} of ${NT_MAX} files</div>` : '');
+  }
+  renderNtFiles();
+
+  $('ntFiles').addEventListener('change', () => {
+    const picked = [...$('ntFiles').files];
+    $('ntFiles').value = '';
+    for (const f of picked){
+      if (ntKeep.length + ntNew.length >= NT_MAX){
+        toast(`Up to ${NT_MAX} files \u2014 "${f.name}" was not added`, 'err'); continue;
+      }
+      if (f.size > 5*1024*1024){
+        toast(`"${f.name}" is over 5 MB`, 'err'); continue;
+      }
+      if (ntNew.some(x => x.name === f.name && x.size === f.size)){
+        toast(`"${f.name}" is already attached`, 'err'); continue;
+      }
+      ntNew.push(f);
+    }
+    renderNtFiles();
+  });
+
+  openLayer.node.addEventListener('click', e => {
+    const t = e.target.closest('[data-ntdrop]'); if (!t) return;
+    const v = t.dataset.ntdrop;
+    if (v[0] === 'k') ntKeep.splice(Number(v.slice(1)), 1);
+    else              ntNew.splice(Number(v.slice(1)), 1);
+    renderNtFiles();
+  });
+
+  $('ntSave').onclick = () => busy($('ntSave'), 'Saving\u2026', async () => {
+    const title = $('ntTitle').value.trim();
+    $('ntTitleErr').classList.toggle('hidden', !!title);
+    if (!title) return;
+    const from = $('ntFrom').value, until = $('ntUntil').value;
+    if (from && until && until < from) return toast('The end date is before the start date', 'err');
+
+    // upload anything newly chosen, then store the full list of paths
+    const paths = [...ntKeep];
+    for (let i = 0; i < ntNew.length; i++){
+      const f = ntNew[i];
+      const safe = f.name.replace(/[^\w.\-]/g,'_');
+      const path = `${Date.now()}_${i}_${safe}`;
+      const { error } = await sb.storage.from('notices').upload(path, f);
+      if (error) return toast(`Upload failed on "${f.name}": ${error.message}`, 'err');
+      paths.push(path);
+    }
+
+    const patch = { title, body: $('ntBody').value.trim() || null,
+                    pinned: $('ntPin').checked,
+                    starts_at: from || null, expires_at: until || null,
+                    attachments: paths.length ? paths : null };
+    const { error } = n
+      ? await sb.from('notices').update(patch).eq('id', n.id)
+      : await sb.from('notices').insert({ ...patch,
+          created_by: ME.id, created_name: ME.full_name || ME.email });
+    if (error) return toast(error.message, 'err');
+
+    await loadCore(); SIGNED = {}; await renderNotices(); renderAdminNotices();
+    closeLayer(); toast(n ? 'Notice updated' : 'Notice posted');
+  });
+
+  const del = $('ntDelete');
+  if (del) del.onclick = async () => {
+    const go = await confirmDialog({ title:'Remove this notice?',
+      body:`<p style="margin:0">Residents will no longer see <b>${esc(n.title)}</b>.</p>`,
+      confirmText:'Remove', danger:true });
+    if (!go) return;
+    const { error } = await sb.from('notices').delete().eq('id', n.id);
+    if (error) return toast(error.message, 'err');
+    // the row is gone; tidy the files it pointed at
+    if (n.attachments && n.attachments.length)
+      await sb.storage.from('notices').remove(n.attachments);
+    await loadCore(); SIGNED = {}; await renderNotices(); renderAdminNotices();
+    closeLayer(); toast('Notice removed');
+  };
+}
+
+/* ----- building address (committee) ----- */
+function renderAdminBuilding(){
+  $('setAddress').value = SETTINGS.address  || '';
+  $('setMaps').value    = SETTINGS.maps_url || '';
+}
+
+$('setSave').onclick = () => busy($('setSave'), 'Saving\u2026', async () => {
+  const addr = $('setAddress').value.trim();
+  const maps = $('setMaps').value.trim();
+  const bad = maps && !/^https:\/\//i.test(maps);
+  $('setMapsErr').classList.toggle('hidden', !bad);
+  $('setMaps').setAttribute('aria-invalid', String(!!bad));
+  if (bad) return;
+
+  const { error } = await sb.from('settings').upsert([
+    { key:'address',  value: addr || null },
+    { key:'maps_url', value: maps || null }
+  ], { onConflict: 'key' });
+  if (error) return toast(error.message, 'err');
+
+  SETTINGS.address = addr || null; SETTINGS.maps_url = maps || null;
+  renderBuilding();
+  toast('Building address saved');
+});
 
 /* ----- change requests ----- */
 function renderRequests(){
