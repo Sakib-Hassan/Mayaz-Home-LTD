@@ -345,14 +345,37 @@ img.preview{object-fit:contain;display:block}
 .notice .pinflag{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn);
   border:1px solid var(--warn-line);background:var(--warn-bg);border-radius:3px;padding:1px 6px}
 
-.notice .files{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.notice .shot{width:92px;height:70px;object-fit:cover;border-radius:4px;border:1px solid var(--line);
-  cursor:pointer;background:var(--sunk);display:block}
+.notice .files{margin-top:12px}
+.notice .lead{display:block;width:100%;max-height:400px;object-fit:contain;object-position:left;
+  border-radius:var(--r);border:1px solid var(--line);background:var(--sunk);cursor:zoom-in}
+.notice .lead:hover{border-color:var(--accent)}
+.notice .more-shots{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.notice .shot{width:132px;height:100px;object-fit:cover;border-radius:var(--r);
+  border:1px solid var(--line);cursor:zoom-in;background:var(--sunk);display:block}
 .notice .shot:hover{border-color:var(--accent)}
+.notice .zoomhint{font-size:11.5px;color:var(--faint);margin-top:6px}
 .filerow{display:flex;gap:9px;align-items:center;margin-top:7px;font-size:13px;
   padding:7px 9px;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r)}
 .filerow .fn{flex:1;font-family:var(--mono);font-size:12px;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== building card ============================================= */
+.bcard{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;
+  background:var(--surface);box-shadow:var(--sh)}
+.bcard .top{background:linear-gradient(135deg,#16302a 0%,var(--ink) 55%,#22403a 100%);
+  color:#fff;padding:20px 22px;display:flex;gap:16px;align-items:flex-start}
+.bcard .top svg{flex:none;opacity:.9}
+.bcard .top .lbl{color:#8fb3a8;margin-bottom:5px}
+.bcard .top .addr{font-size:18px;font-weight:600;line-height:1.35;font-family:var(--cond)}
+.bcard .map{width:100%;height:250px;border:0;display:block;background:var(--sunk)}
+.bcard .acts{padding:13px 16px;display:flex;gap:9px;flex-wrap:wrap;align-items:center;
+  border-top:1px solid var(--line)}
+.bcard .acts .grow{margin-left:auto}
+.mapless{height:150px;display:grid;place-items:center;text-align:center;padding:18px;
+  background:
+    repeating-linear-gradient(45deg,transparent 0 11px,rgba(27,42,38,.035) 11px 12px),
+    var(--sunk);
+  color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
 
 /* ===== building footer =========================================== */
 .buildfoot{border-top:1px solid var(--line);margin-top:34px;padding-top:14px;
@@ -479,7 +502,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 
   <nav id="tabs" role="tablist" aria-label="Sections">
     <button data-view="board"     role="tab" aria-selected="true">Bill board</button>
-    <button data-view="directory" role="tab" aria-selected="false">Phone index</button>
+    <button data-view="directory" role="tab" aria-selected="false">Contacts &amp; building</button>
     <button data-view="mine"      role="tab" aria-selected="false">My flat</button>
     <button data-view="admin"     role="tab" aria-selected="false" class="hidden">
       Committee <span class="count hidden" id="navCount">0</span></button>
@@ -535,8 +558,8 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
     <!-- ---------- DIRECTORY ---------- -->
     <section id="view-directory" class="hidden" role="tabpanel">
       <div class="pagehead">
-        <div><h2>Phone index</h2>
-        <p class="sub">Guards, services and every flat in the building.</p></div>
+        <div><h2>Contacts &amp; building</h2>
+        <p class="sub">Where we are, the intercom extensions, the guards, and every flat.</p></div>
       </div>
 
       <div class="block" id="addrBlock">
@@ -699,17 +722,18 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 
       <div class="block narrow">
         <h3>Open the month for collection</h3>
-        <p class="sub">Marks the month as due for all 30 flats, so the board can show who has paid
-          and who has not. Residents enter their own metered amount when they upload the copy.</p>
+        <p class="sub">Marks the month as due for all 30 flats and the master meter, so the board
+          shows who has paid and who has not. Residents enter their own metered amount when they
+          upload the copy.</p>
         <div class="panel">
           <div class="row2">
             <div class="field"><label for="genPeriod">Month</label>
               <input id="genPeriod" type="month">
               <div class="help">The month the bills cover.</div></div>
             <div class="field"><label for="genCommon">Master meter amount</label>
-              <input id="genCommon" type="number" step="0.01" min="0" placeholder="leave blank to skip">
+              <input id="genCommon" type="number" step="0.01" min="0" placeholder="optional">
               <div class="help">Stairs, lift and garage — the one bill the committee settles.
-                Leave empty and no line is created for it.</div></div>
+                It is opened with the flats either way; the amount can wait until the bill arrives.</div></div>
           </div>
           <div id="genPreview"></div>
           <button class="btn" id="genBtn">Review and create</button>
@@ -744,6 +768,14 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
             <input id="setMaps" placeholder="https://maps.app.goo.gl/...">
             <div class="help">Open the building in Google Maps, tap Share, and paste the link.</div>
             <div class="err hidden" id="setMapsErr">Must start with https://</div>
+          </div>
+          <div class="field">
+            <label for="setCoords">Coordinates</label>
+            <input id="setCoords" placeholder="23.62381, 90.49973">
+            <div class="help">This is what draws the map. In Google Maps, long-press the building —
+              the numbers appear at the top and can be copied. Paste them here as
+              <span class="mono-sm">latitude, longitude</span>.</div>
+            <div class="err hidden" id="setCoordsErr">Use two numbers separated by a comma.</div>
           </div>
           <button class="btn" id="setSave">Save</button>
         </div>
@@ -840,7 +872,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
    ===================================================================== */
 const CONFIG = {
   url:      'https://dzvcucceooevdjnfkunt.supabase.co',
-  anonKey:  'sb_publishable_hBFkEbi_Mx9wXLrZ2pMUzg_8kh3g_bu',
+  anonKey:  'PASTE_YOUR_PUBLISHABLE_KEY_HERE',
   building: 'Mayaz Home LTD',
 
   // Name of the Edge Function that creates logins, exactly as it appears in
@@ -1447,11 +1479,17 @@ function noticeFilesHtml(n){
   const files = n.attachments || [];
   if (!files.length) return '';
   const imgs = files.filter(isImage), docs = files.filter(p => !isImage(p));
+  const [lead, ...rest] = imgs;
   return `<div class="files">
-      ${imgs.map(p => SIGNED[p]
+      ${lead ? (SIGNED[lead]
+        ? `<img class="lead" src="${SIGNED[lead]}" alt="${esc(fileName(lead))}"
+             data-full="${esc(lead)}" loading="lazy">`
+        : '<div class="skel" style="height:220px"></div>') : ''}
+      ${rest.length ? `<div class="more-shots">${rest.map(p => SIGNED[p]
         ? `<img class="shot" src="${SIGNED[p]}" alt="${esc(fileName(p))}"
              data-full="${esc(p)}" loading="lazy">`
-        : `<span class="shot"></span>`).join('')}
+        : '<span class="shot"></span>').join('')}</div>` : ''}
+      ${imgs.length ? '<div class="zoomhint">Tap a picture to see it full size</div>' : ''}
     </div>
     ${docs.map(p => `<div class="filerow">
       <span aria-hidden="true">\u25a4</span>
@@ -1523,35 +1561,72 @@ document.addEventListener('click', async e => {
 });
 
 /* ===== building address ============================================ */
+/* Coordinates are stored as "lat,lng". With them we can draw an actual map
+   from OpenStreetMap, which needs no API key and no billing account —
+   Google's embed does. The Google link is still offered for directions,
+   since that is what people navigate with here. */
+function parseCoords(v){
+  if (!v) return null;
+  const m = String(v).match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if (!m) return null;
+  const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng };
+}
+
 function renderBuilding(){
   const addr = SETTINGS.address, maps = SETTINGS.maps_url;
+  const c = parseCoords(SETTINGS.coords);
 
-  if (!addr && !maps){
+  if (!addr && !maps && !c){
     $('addrCard').innerHTML = `<p class="help" style="margin:0">${ME.role === 'admin'
-      ? 'Add the address and a Google Maps link in the Committee tab.'
+      ? 'Add the address and a map link in the Committee tab.'
       : 'The committee has not added the address yet.'}</p>`;
-    $('buildFoot').innerHTML = '';
+    $('buildFoot').innerHTML = `<span>${esc(CONFIG.building)}</span>`;
     return;
   }
 
+  const dirLink = maps || (c
+    ? `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`
+    : (addr ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr) : ''));
+
+  const mapHtml = c
+    ? `<iframe class="map" loading="lazy" title="Map of ${esc(addr || CONFIG.building)}"
+         src="https://www.openstreetmap.org/export/embed.html?bbox=${
+           (c.lng-0.0035).toFixed(5)},${(c.lat-0.0022).toFixed(5)},${
+           (c.lng+0.0035).toFixed(5)},${(c.lat+0.0022).toFixed(5)}&layer=mapnik&marker=${
+           c.lat},${c.lng}"></iframe>`
+    : `<div class="mapless">${ME.role === 'admin'
+        ? 'Add the coordinates in the Committee tab to show a map here.'
+        : 'No map pinned yet.'}</div>`;
+
   $('addrCard').innerHTML = `
-    <div class="addrcard">
-      <div class="who">
-        <div class="lbl" style="margin-bottom:3px">Address</div>
-        <div style="font-size:14.5px">${addr ? esc(addr) : '<span class="none-txt">not recorded</span>'}</div>
+    <div class="bcard">
+      <div class="top">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect x="4" y="7" width="24" height="21" rx="1.5" stroke="#7fd8b4" stroke-width="1.6"/>
+          <path d="M4 12h24M12 7v21M20 7v21" stroke="#7fd8b4" stroke-width="1.2" opacity=".55"/>
+          <rect x="14.5" y="21" width="3" height="7" fill="#7fd8b4" opacity=".8"/>
+          <path d="M16 2.5 29 7H3z" fill="#7fd8b4"/>
+        </svg>
+        <div>
+          <div class="lbl">Address</div>
+          <div class="addr">${addr ? esc(addr) : '<span style="opacity:.6">not recorded</span>'}</div>
+        </div>
       </div>
-      <div class="inline">
-        ${maps ? `<a class="btn ghost sm" href="${esc(maps)}" target="_blank" rel="noopener">Open in Maps</a>` : ''}
-        ${maps ? `<button class="btn ghost sm" data-copy="${esc(maps)}">Copy link</button>` : ''}
+      ${mapHtml}
+      <div class="acts">
+        ${dirLink ? `<a class="btn sm" href="${esc(dirLink)}" target="_blank" rel="noopener">Directions</a>` : ''}
         ${addr ? `<button class="btn ghost sm" data-copy="${esc(addr)}">Copy address</button>` : ''}
+        ${maps ? `<button class="btn ghost sm" data-copy="${esc(maps)}">Copy link</button>` : ''}
+        <span class="grow help">Send this to a delivery rider or a guest</span>
       </div>
-    </div>
-    <p class="privacy">Useful when directing a delivery, a guest or a repair visit.</p>`;
+    </div>`;
 
   $('buildFoot').innerHTML = `
     <span>${esc(CONFIG.building)}</span>
     ${addr ? `<span>\u00b7 ${esc(addr)}</span>` : ''}
-    ${maps ? `<a href="${esc(maps)}" target="_blank" rel="noopener">Open in Maps</a>` : ''}`;
+    ${dirLink ? `<a href="${esc(dirLink)}" target="_blank" rel="noopener">Directions</a>` : ''}`;
 }
 
 /* ===== directory =================================================== */
@@ -2347,7 +2422,7 @@ $('genBtn').onclick = () => busy($('genBtn'), 'Checking…', async () => {
     body:`<dl class="kv">
         <dt>Month</dt><dd><b>${esc(monthLabel(period))}</b></dd>
         <dt>Master meter</dt><dd>${common === '' ? '<span class="none-txt">skipped</span>' : money(Number(common))}</dd>
-        <dt>New lines</dt><dd><b>${p.would_create}</b> of ${p.total_flats} flats</dd>
+        <dt>New lines</dt><dd><b>${p.would_create}</b> of ${p.total_flats} meters</dd>
       </dl>
       ${p.already_open > 0 ? `<div class="msg warn" style="margin-top:12px">
         <span class="ic">▲</span><span>${p.already_open} flat${p.already_open===1?'':'s'} already
@@ -2675,23 +2750,33 @@ function openNoticeEditor(id){
 function renderAdminBuilding(){
   $('setAddress').value = SETTINGS.address  || '';
   $('setMaps').value    = SETTINGS.maps_url || '';
+  $('setCoords').value  = SETTINGS.coords   || '';
 }
 
 $('setSave').onclick = () => busy($('setSave'), 'Saving\u2026', async () => {
   const addr = $('setAddress').value.trim();
   const maps = $('setMaps').value.trim();
-  const bad = maps && !/^https:\/\//i.test(maps);
-  $('setMapsErr').classList.toggle('hidden', !bad);
-  $('setMaps').setAttribute('aria-invalid', String(!!bad));
-  if (bad) return;
+  const co   = $('setCoords').value.trim();
+
+  const badMap = maps && !/^https:\/\//i.test(maps);
+  $('setMapsErr').classList.toggle('hidden', !badMap);
+  $('setMaps').setAttribute('aria-invalid', String(!!badMap));
+
+  const badCo = co && !parseCoords(co);
+  $('setCoordsErr').classList.toggle('hidden', !badCo);
+  $('setCoords').setAttribute('aria-invalid', String(!!badCo));
+
+  if (badMap || badCo) return;
 
   const { error } = await sb.from('settings').upsert([
     { key:'address',  value: addr || null },
-    { key:'maps_url', value: maps || null }
+    { key:'maps_url', value: maps || null },
+    { key:'coords',   value: co   || null }
   ], { onConflict: 'key' });
   if (error) return toast(error.message, 'err');
 
   SETTINGS.address = addr || null; SETTINGS.maps_url = maps || null;
+  SETTINGS.coords = co || null;
   renderBuilding();
   toast('Building address saved');
 });
