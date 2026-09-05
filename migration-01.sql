@@ -1,159 +1,199 @@
--- =======================================================================
---  Migration 01 — real flat numbers, owner + tenant details, NID uploads,
---  meter numbers, and the building master meter.
+-- =====================================================================
+--  Migration 14 — service charges
 --
---  Run this ONCE in Supabase → SQL Editor, after schema.sql.
---  Safe to run on the placeholder flats you already have — it renames them
---  in place, so nothing that points at a flat gets broken.
+--  Run ONCE in Supabase → SQL Editor, after migration-13.sql.
+--
+--  Separate from electricity bills, and works differently:
+--    · the committee assigns amounts; residents do not enter anything
+--    · a charge is broken into components (guard salary, generator, ...)
+--    · assigned fresh each month — nothing carries over on its own
+--    · the committee marks it paid; there is no upload or verification,
+--      because this is normally settled in cash or bKash
+--
+--  Every mark-paid is recorded with who did it. This is money changing
+--  hands with no receipt, so the log is the only record there is.
 -- =====================================================================
 
--- ---------- 1. NEW COLUMNS -------------------------------------------
+-- ---------- 1. THE COMPONENT LIST ------------------------------------
 
-alter table public.flats
-  add column if not exists block           text,
-  add column if not exists flat_number     integer,
-  add column if not exists meter_no        text,
-  add column if not exists is_common       boolean not null default false,
-  add column if not exists owner_nid_path  text,
-  add column if not exists tenant_name     text,
-  add column if not exists tenant_phone    text,
-  add column if not exists tenant_nid_path text;
+create table if not exists public.service_components (
+  id         bigint generated always as identity primary key,
+  name       text not null unique,
+  sort_order integer default 0,
+  active     boolean not null default true
+);
 
-comment on column public.flats.is_common is
-  'true for the building master meter (stairs, lift, garage), not a residence';
+alter table public.service_components enable row level security;
 
--- ---------- 2. RENAME THE 30 FLATS -----------------------------------
--- A1-A8, B1-B8, C1-C7, D1-D7, displayed as 1A ... 8A, 1B ... 7D
+drop policy if exists sc_components_read  on public.service_components;
+drop policy if exists sc_components_write on public.service_components;
 
-with target as (
-  select row_number() over (order by block_order, num) as rn, block, num
-  from (
-    select 'A' as block, 1 as block_order, g as num from generate_series(1,8) g
-    union all select 'B', 2, g from generate_series(1,8) g
-    union all select 'C', 3, g from generate_series(1,7) g
-    union all select 'D', 4, g from generate_series(1,7) g
-  ) x
-),
-present as (
-  select id, row_number() over (order by id) as rn
-  from public.flats
-  where is_common = false
-)
-update public.flats f
-set block       = t.block,
-    flat_number = t.num,
-    flat_no     = t.num::text || t.block
-from target t
-join present p on p.rn = t.rn
-where f.id = p.id;
+create policy sc_components_read on public.service_components
+  for select to authenticated using (true);
+create policy sc_components_write on public.service_components
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
--- ---------- 3. THE MASTER METER --------------------------------------
--- 31st meter: stairs, lift and garage. Not a residence, so it carries no
--- owner or tenant — the committee settles it from building funds.
+insert into public.service_components (name, sort_order) values
+  ('Guard salary', 1),
+  ('Generator',    2),
+  ('Electricity',  3),
+  ('Water bill',   4),
+  ('Others',       5)
+on conflict (name) do nothing;
 
-insert into public.flats (flat_no, block, flat_number, is_common, owner_name)
-values ('Master meter', 'Z', 999, true, 'Stairs, lift and garage')
-on conflict (flat_no) do nothing;
+-- ---------- 2. THE CHARGES -------------------------------------------
+-- lines is a snapshot: [{"name":"Guard salary","amount":500}, ...]
+-- Storing the component NAME rather than only an id means renaming a
+-- component later does not rewrite what a flat was charged in the past.
 
--- ---------- 4. RESIDENTS MAY MAINTAIN THEIR OWN DETAILS --------------
+create table if not exists public.service_charges (
+  id         bigint generated always as identity primary key,
+  flat_id    bigint not null references public.flats(id) on delete cascade,
+  period     text not null,                          -- 'YYYY-MM'
+  lines      jsonb not null default '[]'::jsonb,
+  total      numeric(12,2) not null default 0,
+  status     text not null default 'unpaid' check (status in ('unpaid','paid')),
+  paid_at    timestamptz,
+  paid_by    uuid references auth.users(id) on delete set null,
+  paid_name  text,
+  method     text,                                   -- cash, bKash, bank...
+  note       text,
+  updated_at timestamptz,
+  unique (flat_id, period)
+);
 
-drop policy if exists flats_update_own on public.flats;
-create policy flats_update_own on public.flats for update to authenticated
-  using      (id = public.my_flat_id())
-  with check (id = public.my_flat_id());
+create index if not exists sc_period_idx on public.service_charges (period);
 
--- but only the committee may change the identity of the flat itself
-create or replace function public.guard_flat_update()
-returns trigger language plpgsql security definer set search_path = public as $$
+alter table public.service_charges enable row level security;
+
+-- Status and amounts are visible to everyone, exactly like electricity —
+-- that transparency is the point of the board. Only the committee writes.
+drop policy if exists sc_read  on public.service_charges;
+drop policy if exists sc_write on public.service_charges;
+
+create policy sc_read on public.service_charges
+  for select to authenticated using (true);
+create policy sc_write on public.service_charges
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+-- ---------- 3. TOTAL IS ALWAYS THE SUM OF THE LINES ------------------
+
+create or replace function public.calc_service_total()
+returns trigger language plpgsql as $$
 begin
-  if not public.is_admin() then
-    if new.flat_no     is distinct from old.flat_no
-    or new.block       is distinct from old.block
-    or new.flat_number is distinct from old.flat_number
-    or new.meter_no    is distinct from old.meter_no
-    or new.is_common   is distinct from old.is_common then
-      raise exception 'Only the committee can change the flat number or meter number.';
-    end if;
-  end if;
+  new.total := coalesce((
+    select sum((x->>'amount')::numeric)
+    from jsonb_array_elements(coalesce(new.lines, '[]'::jsonb)) x
+    where (x->>'amount') is not null
+  ), 0);
+  new.updated_at := now();
   return new;
 end $$;
 
-drop trigger if exists trg_guard_flat_update on public.flats;
-create trigger trg_guard_flat_update
-  before update on public.flats
-  for each row execute function public.guard_flat_update();
+drop trigger if exists trg_calc_service_total on public.service_charges;
+create trigger trg_calc_service_total
+  before insert or update on public.service_charges
+  for each row execute function public.calc_service_total();
 
--- ---------- 5. PRIVATE BUCKET FOR NID COPIES -------------------------
--- Separate from bill receipts, and readable ONLY by that flat and the
--- committee. Other residents can see names and phone numbers, never NIDs.
+-- ---------- 4. AUDIT --------------------------------------------------
 
-insert into storage.buckets (id, name, public)
-values ('documents','documents', false)
-on conflict (id) do nothing;
-
-drop policy if exists documents_read   on storage.objects;
-drop policy if exists documents_insert on storage.objects;
-drop policy if exists documents_update on storage.objects;
-drop policy if exists documents_delete on storage.objects;
-
-create policy documents_read on storage.objects for select to authenticated
-using (
-  bucket_id = 'documents'
-  and (public.is_admin() or (storage.foldername(name))[1] = public.my_flat_id()::text)
+create table if not exists public.service_events (
+  id         bigint generated always as identity primary key,
+  charge_id  bigint not null references public.service_charges(id) on delete cascade,
+  flat_id    bigint not null references public.flats(id) on delete cascade,
+  actor      uuid references auth.users(id) on delete set null,
+  actor_name text,
+  action     text not null,          -- 'assigned', 'amount changed', 'marked paid', 'reopened'
+  total      numeric(12,2),
+  note       text,
+  created_at timestamptz not null default now()
 );
 
-create policy documents_insert on storage.objects for insert to authenticated
-with check (
-  bucket_id = 'documents'
-  and (public.is_admin() or (storage.foldername(name))[1] = public.my_flat_id()::text)
-);
+create index if not exists sc_events_idx on public.service_events (flat_id, created_at desc);
 
-create policy documents_update on storage.objects for update to authenticated
-using (
-  bucket_id = 'documents'
-  and (public.is_admin() or (storage.foldername(name))[1] = public.my_flat_id()::text)
-);
+alter table public.service_events enable row level security;
 
-create policy documents_delete on storage.objects for delete to authenticated
-using (bucket_id = 'documents' and public.is_admin());
+drop policy if exists sc_events_read on public.service_events;
+create policy sc_events_read on public.service_events for select to authenticated
+  using (public.is_admin() or flat_id = public.my_flat_id());
+-- no write policies: only the trigger below writes, as security definer
 
--- ---------- 6. BILL RUN, NOW AWARE OF THE MASTER METER ---------------
--- The master meter usually costs a different amount from a flat, so it
--- takes its own figure. Leave it blank to skip the master meter entirely.
+create or replace function public.log_service_event()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare who text; act text;
+begin
+  select coalesce(full_name, email) into who from profiles where id = auth.uid();
+  who := coalesce(who, 'Supabase dashboard');
 
-drop function if exists public.create_period_bills(text, numeric);
+  if TG_OP = 'INSERT' then
+    act := 'assigned';
+  elsif new.status is distinct from old.status then
+    act := case when new.status = 'paid' then 'marked paid' else 'reopened' end;
+  elsif new.total is distinct from old.total then
+    act := 'amount changed';
+  else
+    return new;
+  end if;
 
-create or replace function public.create_period_bills(
-  p_period text,
-  p_amount numeric,
-  p_common_amount numeric default null
+  insert into service_events (charge_id, flat_id, actor, actor_name, action, total, note)
+  values (new.id, new.flat_id, auth.uid(), who, act, new.total, new.note);
+  return new;
+end $$;
+
+drop trigger if exists trg_log_service_event on public.service_charges;
+create trigger trg_log_service_event
+  after insert or update on public.service_charges
+  for each row execute function public.log_service_event();
+
+-- ---------- 5. ASSIGN TO MANY FLATS AT ONCE --------------------------
+-- The committee picks the flats that share a rate and applies one set of
+-- amounts to all of them. A charge already marked paid is left alone, so
+-- re-running cannot quietly alter what someone has already settled.
+
+create or replace function public.assign_service_charges(
+  p_period   text,
+  p_flat_ids bigint[],
+  p_lines    jsonb
 )
 returns integer language plpgsql security definer set search_path = public as $$
 declare n integer;
 begin
   if not public.is_admin() then
-    raise exception 'Only the committee can open a billing month.';
+    raise exception 'Only the committee can assign service charges.';
+  end if;
+  if p_flat_ids is null or array_length(p_flat_ids, 1) is null then
+    raise exception 'No flats were selected.';
   end if;
 
-  insert into bills (flat_id, period, amount)
-  select id, p_period, p_amount from flats where is_common = false
-  on conflict (flat_id, period) do nothing;
+  insert into service_charges (flat_id, period, lines)
+  select unnest(p_flat_ids), p_period, coalesce(p_lines, '[]'::jsonb)
+  on conflict (flat_id, period) do update
+    set lines = excluded.lines
+    where service_charges.status <> 'paid';
+
   get diagnostics n = row_count;
-
-  if p_common_amount is not null then
-    insert into bills (flat_id, period, amount)
-    select id, p_period, p_common_amount from flats where is_common = true
-    on conflict (flat_id, period) do nothing;
-  end if;
-
   return n;
 end $$;
 
-grant execute on function public.create_period_bills(text, numeric, numeric) to authenticated;
+grant execute on function public.assign_service_charges(text, bigint[], jsonb) to authenticated;
 
--- ---------- 7. CHECK ------------------------------------------------
--- Should list 1A..8A, 1B..8B, 1C..7C, 1D..7D, then Master meter.
+-- ---------- 6. MONTHLY SUMMARY ---------------------------------------
 
-select flat_no, block, flat_number, meter_no
-from public.flats
-order by is_common, block, flat_number;
+create or replace function public.service_totals(p_period text)
+returns table (assigned integer, paid integer, billed numeric, collected numeric)
+language sql stable security definer set search_path = public as $$
+  select
+    count(*)::integer,
+    count(*) filter (where status = 'paid')::integer,
+    coalesce(sum(total), 0),
+    coalesce(sum(total) filter (where status = 'paid'), 0)
+  from service_charges where period = p_period;
+$$;
+
+grant execute on function public.service_totals(text) to authenticated;
+
+-- ---------- 7. CHECK -------------------------------------------------
+
+select 'components' as item, count(*)::text as value from public.service_components
+union all
+select 'charges', count(*)::text from public.service_charges;
