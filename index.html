@@ -222,11 +222,12 @@ button.metric[aria-pressed=true]{border-color:var(--ink);background:var(--sunk)}
 
 /* ===== lists / records =========================================== */
 .rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
-.row{display:flex;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line-2)}
+.row{display:flex;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid var(--line-2);
+  flex-wrap:wrap}
 .row:first-child{border-top:0}
 .row:hover{background:var(--sunk)}
 .row .no{font-family:var(--mono);font-weight:600;min-width:52px;font-size:15px}
-.row .nm{flex:1;min-width:0}
+.row .nm{flex:1 1 150px;min-width:130px}
 .row .nm b{font-weight:500}
 .row .nm small{display:block;color:var(--muted);font-size:12.5px}
 .tel{font-family:var(--mono);font-size:14px;text-decoration:none;white-space:nowrap}
@@ -235,6 +236,11 @@ button.metric[aria-pressed=true]{border-color:var(--ink);background:var(--sunk)}
 .flatcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
   padding:13px 15px;margin-bottom:8px;display:flex;gap:16px;align-items:flex-start;box-shadow:var(--sh)}
 .flatcard .fno{font-family:var(--mono);font-size:18px;font-weight:600;min-width:46px;padding-top:1px}
+.w-ext{width:74px}
+.w-meter{width:116px}
+.w-role{width:120px}
+.w-flat{width:142px}
+.rowacts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto}
 .flatcard .parties{flex:1;min-width:0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .party .tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
   font-weight:600;margin-bottom:2px}
@@ -458,6 +464,16 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
   .dfoot .btn{width:100%}
   .dfoot .left{margin-right:0;width:100%;flex-direction:column-reverse}
   .dfoot .left .btn{width:100%}
+  /* Rows carry a name plus several fixed-width controls. On a narrow screen
+     the name column gets squeezed to a few pixels and wraps one letter per
+     line, so give it the full width and let the controls sit underneath. */
+  .row{gap:8px;padding:11px 12px}
+  .row .nm{flex:1 1 100%;min-width:0}
+  .row .no{min-width:0}
+  .rowacts{margin-left:0;width:100%}
+  .rowacts .w-ext{width:66px}
+  .rowacts .w-meter{flex:1;width:auto;min-width:90px}
+  .rowacts .w-role,.rowacts .w-flat{flex:1;width:auto;min-width:112px}
   .backdrop.center{padding:0;align-items:flex-end}
   .dialog{border-radius:var(--r-lg) var(--r-lg) 0 0;max-height:92vh}
 }
@@ -2736,13 +2752,15 @@ function renderAdminFlats(){
             <small>${f.is_common ? 'stairs, lift and garage'
               : (f.tenant_name ? 'Tenant: ' + esc(f.tenant_name) : 'Owner occupied')}</small>
           </div>
-          ${f.is_common ? '' : `<input data-intercom="${f.id}" value="${esc(f.intercom || '')}"
-                 placeholder="Ext" inputmode="numeric" maxlength="5"
-                 aria-label="Intercom extension for ${esc(f.flat_no)}" style="width:72px">`}
-          <input data-meter="${f.id}" value="${esc(f.meter_no || '')}" placeholder="Meter no"
-                 aria-label="Meter number for ${esc(f.flat_no)}" style="width:112px">
-          <button class="btn ghost sm" data-savemeter="${f.id}">Save</button>
-          ${f.is_common ? '' : `<button class="btn sm" data-editflat="${f.id}">Edit</button>`}
+          <div class="rowacts">
+            ${f.is_common ? '' : `<input class="w-ext" data-intercom="${f.id}"
+                   value="${esc(f.intercom || '')}" placeholder="Ext" inputmode="numeric"
+                   maxlength="5" aria-label="Intercom extension for ${esc(f.flat_no)}">`}
+            <input class="w-meter" data-meter="${f.id}" value="${esc(f.meter_no || '')}"
+                   placeholder="Meter no" aria-label="Meter number for ${esc(f.flat_no)}">
+            <button class="btn ghost sm" data-savemeter="${f.id}">Save</button>
+            ${f.is_common ? '' : `<button class="btn sm" data-editflat="${f.id}">Edit</button>`}
+          </div>
         </div>`).join('')}</div>
     </details>`).join('');
 }
@@ -3472,16 +3490,19 @@ function renderUsers(){
     return `<div class="row">
       <div class="nm"><b>${esc(u.full_name || '—')}</b>
         <small>${esc(u.email || u.id.slice(0,8))} · ${u.role === 'admin' ? 'Committee' : 'Resident'}</small></div>
-      <select data-role="${u.id}" aria-label="Role" style="width:118px">
-        <option value="resident"${u.role!=='admin'?' selected':''}>Resident</option>
-        <option value="admin"${u.role==='admin'?' selected':''}>Committee</option>
-      </select>
-      <select data-user="${u.id}" aria-label="Flat for ${esc(u.full_name || u.email || '')}" style="width:140px">
-        <option value="">— no flat —</option>
-        ${FLATS.map(x => `<option value="${x.id}"${x.id===u.flat_id?' selected':''}>${esc(x.flat_no)}</option>`).join('')}
-      </select>
-      <button class="btn sm" data-saveuser="${u.id}">Save</button>
-      <button class="btn ghost sm" data-pw="${u.id}">Password</button>
+      <div class="rowacts">
+        <select class="w-role" data-role="${u.id}" aria-label="Role">
+          <option value="resident"${u.role!=='admin'?' selected':''}>Resident</option>
+          <option value="admin"${u.role==='admin'?' selected':''}>Committee</option>
+        </select>
+        <select class="w-flat" data-user="${u.id}"
+                aria-label="Flat for ${esc(u.full_name || u.email || '')}">
+          <option value="">— no flat —</option>
+          ${FLATS.map(x => `<option value="${x.id}"${x.id===u.flat_id?' selected':''}>${esc(x.flat_no)}</option>`).join('')}
+        </select>
+        <button class="btn sm" data-saveuser="${u.id}">Save</button>
+        <button class="btn ghost sm" data-pw="${u.id}">Password</button>
+      </div>
     </div>`;
   }).join('');
 }
