@@ -195,20 +195,28 @@ button.metric[aria-pressed=true]{border-color:var(--ink);background:var(--sunk)}
   margin:-4px 0 12px;flex-wrap:wrap}
 
 /* ===== board tiles =============================================== */
-.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:9px}
-.tile{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--idle);
-  border-radius:var(--r);padding:10px 11px;text-align:left;display:block;width:100%;
-  transition:box-shadow .12s,transform .12s,border-color .12s}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:9px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:10px 11px 10px 14px;text-align:left;display:block;width:100%;position:relative;
+  overflow:hidden;transition:box-shadow .12s,transform .12s}
+/* the left edge is split: top half electricity, bottom half service charge */
+.tile::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:linear-gradient(to bottom,var(--c1,var(--idle)) 0 50%,var(--c2,var(--idle)) 50% 100%)}
+.tile .line{display:flex;align-items:baseline;gap:5px;font-size:11.5px;margin-top:5px;
+  color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .line .k2{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);
+  width:26px;flex:none}
+.tile .line .v2{overflow:hidden;text-overflow:ellipsis}
+.tile .line .money{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.tile .line.dim{opacity:.62}
+.tile .line.ok2{color:var(--ok)} .tile .line.warn2{color:var(--warn)}
+.tile .line.bad2{color:var(--bad)} .tile .line.idle2{color:var(--muted)}
 .tile:hover{box-shadow:var(--sh-lg);transform:translateY(-1px)}
 .tile:active{transform:translateY(0)}
 .tile b{display:block;font-family:var(--mono);font-size:16px;font-weight:600}
 .tile .st{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted);margin-top:5px}
 .tile .amt{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:3px}
-.tile.verified {border-left-color:var(--ok)}
-.tile.submitted{border-left-color:var(--warn)}
-.tile.unpaid   {border-left-color:var(--bad)}
-.tile.rejected {border-left-color:var(--bad);background:var(--bad-bg)}
-.tile.none     {border-left-color:var(--idle)}
+.tile.rejected{background:var(--bad-bg)}
 .tile .you{display:inline-block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
   background:var(--accent);color:#fff;border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:2px}
 
@@ -582,7 +590,15 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
       <div id="progressWrap"></div>
       <div class="metrics" id="metrics"></div>
       <div id="board" aria-live="polite"></div>
-      <p class="privacy">Colour is paired with a label on every tile, so the board stays readable
+      <div class="legend">
+        <span><i style="background:var(--ok)"></i>Paid</span>
+        <span><i style="background:var(--warn)"></i>Uploaded, being checked</span>
+        <span><i style="background:var(--bad)"></i>Still owed</span>
+        <span><i style="background:var(--idle)"></i>Not opened or not set</span>
+      </div>
+      <p class="privacy">Every tile carries both charges \u2014 <b>Elec</b> is the electricity bill,
+        <b>Serv</b> the service charge. The coloured edge is split to match: top half electricity,
+        bottom half service charge. Every colour is paired with a word, so the board stays readable
         without relying on colour alone.</p>
     </section>
 
@@ -946,7 +962,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
    ===================================================================== */
 const CONFIG = {
   url:      'https://dzvcucceooevdjnfkunt.supabase.co',
-  anonKey:  'sb_publishable_hBFkEbi_Mx9wXLrZ2pMUzg_8kh3g_bu',
+  anonKey:  'PASTE_YOUR_PUBLISHABLE_KEY_HERE',
   building: 'Mayaz Home LTD',
 
   // Name of the Edge Function that creates logins, exactly as it appears in
@@ -1413,15 +1429,7 @@ function renderBoard(){
 
   $('board').innerHTML = groups.map(g => `
     <div class="sectionhead">${esc(g.head)}</div>
-    <div class="board">${g.items.map(f => {
-      const b = BILLS[f.id]; const st = b ? b.status : 'none'; const s = STATUS[st];
-      return `<button class="tile ${st}" data-flat="${f.id}"
-          aria-label="${esc(f.flat_no)} — ${s.label}">
-        <b>${esc(f.flat_no)}${f.id===ME.flat_id?'<span class="you">you</span>':''}</b>
-        <span class="st"><span aria-hidden="true">${s.ic}</span>${s.label}</span>
-        ${b && b.amount != null ? `<span class="amt">${money(b.amount)}</span>` : ''}
-      </button>`;
-    }).join('')}</div>`).join('');
+    <div class="board">${g.items.map(f => tileHtml(f, 'power')).join('')}</div>`).join('');
 }
 
 document.querySelector('.modeswitch').addEventListener('click', e => {
@@ -1437,10 +1445,6 @@ $('metrics').addEventListener('click', e => {
   F.status = F.status === b.dataset.status ? null : b.dataset.status;
   renderBoard();
 });
-$('board').addEventListener('click', e => {
-  const t = e.target.closest('[data-flat]'); if (!t) return;
-  openFlatDrawer(Number(t.dataset.flat));
-});
 $('jumpQueue').onclick = () => { goTab('admin');
   setTimeout(() => $('queueRows').scrollIntoView({behavior:'smooth', block:'center'}), 60); };
 $('copySummary').onclick = async () => {
@@ -1455,6 +1459,53 @@ Not paid: ${all.filter(f=>{const s=BILLS[f.id]?BILLS[f.id].status:'none';
   try { await navigator.clipboard.writeText(txt); toast('Summary copied'); }
   catch { infoDialog('Summary', `<pre style="white-space:pre-wrap;font:13px var(--mono);margin:0">${esc(txt)}</pre>`); }
 };
+
+/* ----- one tile, both charges ------------------------------------
+   The board's job is to answer "who owes what" in two seconds. A flat that
+   has paid its electricity but not its service charge is not settled, so
+   both belong on the same tile. The switch above changes which one the
+   summary and filters follow, not what the tile shows. */
+const SC_META = {
+  paid:   {label:'Paid',    ic:'\u2713', cls:'ok2',   col:'var(--ok)'},
+  unpaid: {label:'Due',     ic:'!',       cls:'bad2',  col:'var(--bad)'},
+  none:   {label:'Not set', ic:'\u25cb', cls:'idle2', col:'var(--idle)'}
+};
+const PW_META = {
+  verified:  {label:'Paid',       ic:'\u2713', cls:'ok2',   col:'var(--ok)'},
+  submitted: {label:'Checking',   ic:'\u25d4', cls:'warn2', col:'var(--warn)'},
+  unpaid:    {label:'Due',        ic:'!',       cls:'bad2',  col:'var(--bad)'},
+  rejected:  {label:'Sent back',  ic:'\u21ba', cls:'bad2',  col:'var(--bad)'},
+  none:      {label:'Not opened', ic:'\u25cb', cls:'idle2', col:'var(--idle)'}
+};
+
+function tileHtml(f, focus){
+  const b  = BILLS[f.id];
+  const c  = SERVICE[f.id];
+  const pw = PW_META[b ? b.status : 'none'];
+  const sc = SC_META[!c ? 'none' : c.status];
+
+  const row = (key, meta, amount, active) => `
+    <span class="line ${meta.cls}${active ? '' : ' dim'}">
+      <span class="k2">${key}</span>
+      <span class="v2"><span aria-hidden="true">${meta.ic}</span> ${meta.label}</span>
+      ${amount != null ? `<span class="money">${money(amount)}</span>` : ''}
+    </span>`;
+
+  return `<button class="tile ${b && b.status === 'rejected' ? 'rejected' : ''}"
+      style="--c1:${pw.col};--c2:${sc.col}"
+      data-tile="${f.id}"
+      aria-label="${esc(f.flat_no)} \u2014 electricity ${pw.label}, service charge ${sc.label}">
+    <b>${esc(f.flat_no)}${f.id===ME.flat_id?'<span class="you">you</span>':''}</b>
+    ${row('Elec', pw, b ? b.amount : null, focus !== 'service')}
+    ${row('Serv', sc, c ? c.total  : null, focus === 'service')}
+  </button>`;
+}
+
+$('board').addEventListener('click', e => {
+  const t = e.target.closest('[data-tile]'); if (!t) return;
+  const id = Number(t.dataset.tile);
+  if (F.mode === 'service') openServiceDrawer(id); else openFlatDrawer(id);
+});
 
 /* ----- the service charge view of the board ----- */
 function renderServiceBoard(){
@@ -1527,24 +1578,9 @@ function renderServiceBoard(){
 
   $('board').innerHTML = groups.map(g => `
     <div class="sectionhead">${esc(g.head)}</div>
-    <div class="board">${g.items.map(f => {
-      const c = SERVICE[f.id];
-      const st  = !c ? 'none' : (c.status === 'paid' ? 'verified' : 'unpaid');
-      const lab = !c ? 'Not assigned' : (c.status === 'paid' ? 'Paid' : 'Outstanding');
-      const ic  = !c ? '\u25cb' : (c.status === 'paid' ? '\u2713' : '!');
-      return `<button class="tile ${st}" data-scflat="${f.id}"
-          aria-label="${esc(f.flat_no)} \u2014 ${lab}">
-        <b>${esc(f.flat_no)}${f.id===ME.flat_id?'<span class="you">you</span>':''}</b>
-        <span class="st"><span aria-hidden="true">${ic}</span>${lab}</span>
-        ${c ? `<span class="amt">${money(c.total)}</span>` : ''}
-      </button>`;
-    }).join('')}</div>`).join('');
+    <div class="board">${g.items.map(f => tileHtml(f, 'service')).join('')}</div>`).join('');
 }
 
-$('board').addEventListener('click', e => {
-  const t = e.target.closest('[data-scflat]'); if (!t) return;
-  openServiceDrawer(Number(t.dataset.scflat));
-});
 
 async function openServiceDrawer(flatId){
   const f = FLATS.find(x => x.id === flatId); if (!f) return;
