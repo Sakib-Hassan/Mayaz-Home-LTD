@@ -122,6 +122,10 @@ header .userbtn:hover{background:rgba(255,255,255,.13)}
 .userbtn .un{font-size:12.5px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .topbar{position:sticky;top:0;z-index:30;box-shadow:0 1px 0 rgba(27,42,38,.06)}
+/* The header and tabs float above the page, so anything the browser scrolls
+   to must keep clear of them or it lands underneath and looks cut off. */
+main .block, main .panel, main section > h2, .sectionhead, .rows, .pagehead{
+  scroll-margin-top:112px}
 nav{background:var(--surface);border-bottom:1px solid var(--line);display:flex;gap:4px;
   padding:7px 12px;overflow-x:auto;scrollbar-width:none}
 nav::-webkit-scrollbar{display:none}
@@ -785,10 +789,13 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
           the money comes in.</p>
 
         <div class="panel">
-          <div class="bar" style="margin-bottom:14px">
-            <div class="field w-sm"><label for="scPeriod">Month</label>
+          <div class="row2" style="align-items:end">
+            <div class="field"><label for="scPeriod">Month</label>
               <input id="scPeriod" type="month"></div>
-            <button class="btn ghost sm" id="scCopyLast">Copy last month</button>
+            <div class="field">
+              <button class="btn ghost" id="scCopyLast" style="width:100%">Copy last month</button>
+              <div class="help">Fills the amounts below from the previous month</div>
+            </div>
           </div>
 
           <div class="sectionhead" style="margin-top:0">Amounts per flat</div>
