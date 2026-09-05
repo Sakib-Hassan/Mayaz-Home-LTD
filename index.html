@@ -359,6 +359,26 @@ img.preview{object-fit:contain;display:block}
 .filerow .fn{flex:1;font-family:var(--mono);font-size:12px;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
 
+/* ===== service charge ============================================ */
+.modeswitch{display:inline-flex;background:var(--sunk);border:1px solid var(--line);
+  border-radius:99px;padding:3px;gap:2px;margin-bottom:14px}
+.modeswitch button{border:0;background:none;border-radius:99px;padding:7px 16px;
+  font-size:13.5px;font-weight:500;color:var(--muted);white-space:nowrap}
+.modeswitch button[aria-pressed=true]{background:var(--accent);color:#fff}
+.picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px;
+  max-height:240px;overflow:auto;padding:3px;border:1px solid var(--line);
+  border-radius:var(--r);background:var(--sunk)}
+.pick{border:1px solid var(--line);background:#fff;border-radius:var(--r);padding:7px 4px;
+  font-family:var(--mono);font-size:13px;font-weight:600;text-align:center}
+.pick[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.pick.done{border-style:dashed;color:var(--faint)}
+.pick[aria-pressed=true].done{color:#fff;border-style:solid}
+.linegrid{display:grid;grid-template-columns:1fr 130px;gap:8px 12px;align-items:center}
+.linegrid .lbl2{font-size:13.5px}
+.sumline{display:flex;justify-content:space-between;padding:11px 13px;background:var(--accent-soft);
+  border-radius:var(--r);margin-top:12px;font-size:14px}
+.sumline b{font-family:var(--mono);font-size:16px}
+
 /* ===== building card ============================================= */
 .bcard{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;
   background:var(--surface);box-shadow:var(--sh)}
@@ -527,6 +547,11 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 
       <div id="noticeBoard"></div>
 
+      <div class="modeswitch" role="group" aria-label="What to show">
+        <button data-mode2="power"   aria-pressed="true">Electricity</button>
+        <button data-mode2="service" aria-pressed="false">Service charge</button>
+      </div>
+
       <div class="toolbar">
         <div class="field w-sm">
           <label for="period">Month</label>
@@ -679,6 +704,12 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
         <h3>History</h3>
         <div class="rows" id="mineRows"></div>
       </div>
+
+      <div class="block narrow">
+        <h3>Service charge</h3>
+        <p class="sub">Set and collected by the committee. Nothing to upload.</p>
+        <div class="rows" id="mineService"></div>
+      </div>
     </section>
 
     <!-- ---------- ADMIN ---------- -->
@@ -746,6 +777,40 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
         <h3>Flat records</h3>
         <p class="sub">Grouped by block. Meter numbers edit in place; owner and tenant details open a form.</p>
         <div id="adminFlatRows"></div>
+      </div>
+
+      <div class="block">
+        <h3>Service charge</h3>
+        <p class="sub">Assign amounts to the flats that share a rate, then mark them paid as
+          the money comes in.</p>
+
+        <div class="panel">
+          <div class="bar" style="margin-bottom:14px">
+            <div class="field w-sm"><label for="scPeriod">Month</label>
+              <input id="scPeriod" type="month"></div>
+            <button class="btn ghost sm" id="scCopyLast">Copy last month</button>
+          </div>
+
+          <div class="sectionhead" style="margin-top:0">Amounts per flat</div>
+          <div class="linegrid" id="scLines"></div>
+          <div class="sumline"><span>Total per selected flat</span><b id="scTotal">৳0</b></div>
+
+          <div class="sectionhead">Which flats</div>
+          <div class="inline" style="margin-bottom:9px">
+            <button class="btn ghost sm" data-pickall="all">All 30</button>
+            <button class="btn ghost sm" data-pickall="none">None</button>
+            <button class="btn ghost sm" data-pickall="unassigned">Not yet assigned</button>
+            <span class="help" id="scPickCount"></span>
+          </div>
+          <div class="picker" id="scPicker"></div>
+
+          <button class="btn" id="scApply" style="margin-top:14px">Assign to selected flats</button>
+          <div id="scMsg" style="margin-top:12px"></div>
+        </div>
+
+        <div class="sectionhead">This month</div>
+        <div class="metrics" id="scMetrics"></div>
+        <div class="rows" id="scRows"></div>
       </div>
 
       <div class="block">
@@ -922,8 +987,10 @@ const PHONE_OK = v => !v || /^[0-9+\-\s()]{6,20}$/.test(v);
 /* ===== state ======================================================= */
 let ME = null, FLATS = [], CONTACTS = [], BILLS = {}, QUEUE = [], USERS = [], REQUESTS = [];
 let NOTICES = [], SETTINGS = {};
+let COMPONENTS = [], SERVICE = {}, SC_PERIOD = {}, SC_PICK = new Set();
 let lastSync = null;
-const F = { search:'', block:'all', onlyMine:false, showCommon:true, status:null,
+const F = { mode:'power',
+            search:'', block:'all', onlyMine:false, showCommon:true, status:null,
             dirSearch:'', dirBlock:'all', occ:'all', mode:'cards',
             qSearch:'', qSort:'old', qPeriod:'', uSearch:'', uFil:'all' };
 
@@ -1122,6 +1189,7 @@ async function start(){
     if (ME.role === 'admin') $('jumpQueue').classList.remove('hidden');
 
     $('period').value = $('upPeriod').value = $('genPeriod').value = thisMonth();
+    $('scPeriod').value = thisMonth();
     buildBlockFilters();
     renderContacts(); renderIntercom(); renderDirectory();
     await renderNotices(); renderBuilding();
@@ -1142,16 +1210,18 @@ async function start(){
 }
 
 async function loadCore(){
-  const [{ data:flats, error:e1 }, { data:contacts }, { data:notices }, { data:settings }] =
-    await Promise.all([
+  const [{ data:flats, error:e1 }, { data:contacts }, { data:notices }, { data:settings },
+         { data:components }] = await Promise.all([
       sb.from('flats').select('*').order('is_common').order('block').order('flat_number'),
       sb.from('contacts').select('*').order('sort_order'),
       sb.from('notices').select('*').order('pinned', {ascending:false}).order('created_at', {ascending:false}),
-      sb.from('settings').select('*')
+      sb.from('settings').select('*'),
+      sb.from('service_components').select('*').eq('active', true).order('sort_order')
     ]);
   if (e1) throw e1;
   FLATS = flats || []; CONTACTS = contacts || []; NOTICES = notices || [];
   SETTINGS = Object.fromEntries((settings || []).map(r => [r.key, r.value]));
+  COMPONENTS = components || [];
 }
 
 function markSync(){ lastSync = Date.now(); paintSync(); }
@@ -1244,7 +1314,11 @@ $('period').onchange = loadBoard;
 async function loadBoard(){
   const period = $('period').value || thisMonth();
   $('board').innerHTML = `<div class="board">${'<div class="skel skeltile"></div>'.repeat(8)}</div>`;
-  const { data, error } = await sb.from('bills').select('*').eq('period', period);
+  const [{ data, error }, { data: sc }] = await Promise.all([
+    sb.from('bills').select('*').eq('period', period),
+    sb.from('service_charges').select('*').eq('period', period)
+  ]);
+  SERVICE = Object.fromEntries((sc || []).map(r => [r.flat_id, r]));
   if (error){
     banner($('board'), 'Could not load this month: ' + esc(error.message), 'err',
       '<button class="btn sm" id="retryBoard">Try again</button>');
@@ -1272,6 +1346,7 @@ function boardRows(){
 }
 
 function renderBoard(){
+  if (F.mode === 'service') return renderServiceBoard();
   const all = FLATS.filter(f => !f.is_common);
   const c = { verified:0, submitted:0, outstanding:0 };
   all.forEach(f => { const st = BILLS[f.id] ? BILLS[f.id].status : 'none';
@@ -1342,6 +1417,14 @@ function renderBoard(){
     }).join('')}</div>`).join('');
 }
 
+document.querySelector('.modeswitch').addEventListener('click', e => {
+  const b = e.target.closest('[data-mode2]'); if (!b) return;
+  F.mode = b.dataset.mode2;
+  F.status = null;
+  [...b.parentNode.children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  renderBoard();
+});
+
 $('metrics').addEventListener('click', e => {
   const b = e.target.closest('[data-status]'); if (!b) return;
   F.status = F.status === b.dataset.status ? null : b.dataset.status;
@@ -1365,6 +1448,138 @@ Not paid: ${all.filter(f=>{const s=BILLS[f.id]?BILLS[f.id].status:'none';
   try { await navigator.clipboard.writeText(txt); toast('Summary copied'); }
   catch { infoDialog('Summary', `<pre style="white-space:pre-wrap;font:13px var(--mono);margin:0">${esc(txt)}</pre>`); }
 };
+
+/* ----- the service charge view of the board ----- */
+function renderServiceBoard(){
+  const all = FLATS.filter(f => !f.is_common);
+  const period = $('period').value || thisMonth();
+  let paid = 0, unpaid = 0, none = 0, billed = 0, collected = 0;
+
+  all.forEach(f => {
+    const c = SERVICE[f.id];
+    if (!c){ none++; return; }
+    billed += Number(c.total || 0);
+    if (c.status === 'paid'){ paid++; collected += Number(c.total || 0); }
+    else unpaid++;
+  });
+
+  $('boardSub').textContent = 'Service charge for ' + monthLabel(period) + '.';
+
+  $('progressWrap').innerHTML = `
+    <div class="progress">
+      <div class="top"><span>Collected for <b>${esc(monthLabel(period))}</b></span>
+        <span><b>${paid}</b> of <b>${paid + unpaid}</b> assigned flats paid</span></div>
+      <div class="bar" role="img" aria-label="${paid} of ${paid+unpaid} paid">
+        <i class="b-ok" style="width:${(paid/(all.length||1))*100}%"></i>
+        <i class="b-bad" style="width:${(unpaid/(all.length||1))*100}%"></i>
+      </div>
+      <div class="top" style="margin:9px 0 0;padding-top:9px;border-top:1px solid var(--line-2)">
+        <span>Assigned <b>${money(billed)}</b></span>
+        <span>Collected <b>${money(collected)}</b>
+          ${none ? `\u00b7 <span style="color:var(--muted)">${none} flat${
+            none===1?'':'s'} not assigned yet</span>` : ''}</span></div>
+    </div>`;
+
+  const m = (key, val, label, desc, cls) => `
+    <button class="metric ${cls}" data-status="${key}" aria-pressed="${F.status===key}">
+      <b>${val}</b><span class="k">${label}</span><span class="d">${desc}</span></button>`;
+  $('metrics').innerHTML =
+    m('paid', paid, 'Paid', 'settled with the committee', 'ok') +
+    m('unpaid', unpaid, 'Outstanding', 'assigned, not yet collected', 'bad') +
+    m('none', none, 'Not assigned', 'no amount set this month', 'warn') +
+    `<div class="metric neutral"><b>${money(collected)}</b><span class="k">Collected</span>
+      <span class="d">of ${money(billed)} assigned</span></div>`;
+
+  const rows = FLATS.filter(f => {
+    if (f.is_common) return false;
+    if (F.onlyMine && f.id !== ME.flat_id) return false;
+    if (F.block !== 'all' && f.block !== F.block) return false;
+    if (F.search && !f.flat_no.toLowerCase().includes(F.search)) return false;
+    if (F.status){
+      const c = SERVICE[f.id];
+      const st = !c ? 'none' : c.status;
+      if (st !== F.status) return false;
+    }
+    return true;
+  });
+
+  const active = F.search || F.block!=='all' || F.onlyMine || F.status;
+  $('clearFilters').classList.toggle('hidden', !active);
+
+  if (!rows.length){
+    $('board').innerHTML = `<div class="empty"><span class="big" aria-hidden="true">\u2315</span>
+      <div class="t">Nothing matches those filters</div></div>`;
+    return;
+  }
+
+  const groups = [];
+  rows.forEach(f => { const head = 'Block ' + f.block;
+    let g = groups[groups.length-1];
+    if (!g || g.head !== head) groups.push(g = {head, items:[]});
+    g.items.push(f); });
+
+  $('board').innerHTML = groups.map(g => `
+    <div class="sectionhead">${esc(g.head)}</div>
+    <div class="board">${g.items.map(f => {
+      const c = SERVICE[f.id];
+      const st  = !c ? 'none' : (c.status === 'paid' ? 'verified' : 'unpaid');
+      const lab = !c ? 'Not assigned' : (c.status === 'paid' ? 'Paid' : 'Outstanding');
+      const ic  = !c ? '\u25cb' : (c.status === 'paid' ? '\u2713' : '!');
+      return `<button class="tile ${st}" data-scflat="${f.id}"
+          aria-label="${esc(f.flat_no)} \u2014 ${lab}">
+        <b>${esc(f.flat_no)}${f.id===ME.flat_id?'<span class="you">you</span>':''}</b>
+        <span class="st"><span aria-hidden="true">${ic}</span>${lab}</span>
+        ${c ? `<span class="amt">${money(c.total)}</span>` : ''}
+      </button>`;
+    }).join('')}</div>`).join('');
+}
+
+$('board').addEventListener('click', e => {
+  const t = e.target.closest('[data-scflat]'); if (!t) return;
+  openServiceDrawer(Number(t.dataset.scflat));
+});
+
+async function openServiceDrawer(flatId){
+  const f = FLATS.find(x => x.id === flatId); if (!f) return;
+  const c = SERVICE[flatId];
+  const period = $('period').value || thisMonth();
+
+  layer('drawer', `
+    <div class="dhead">
+      <div><h3>${esc(f.flat_no)} \u00b7 service charge</h3>
+        <div style="margin-top:5px">${c
+          ? `<span class="pill ${c.status==='paid'?'verified':'unpaid'}">
+             <span class="ic" aria-hidden="true">${c.status==='paid'?'\u2713':'!'}</span>
+             ${c.status==='paid'?'Paid':'Outstanding'}</span>`
+          : '<span class="pill none"><span class="ic" aria-hidden="true">\u25cb</span>Not assigned</span>'}</div></div>
+      <button class="x" data-close aria-label="Close">\u00d7</button>
+    </div>
+    <div class="dbody">
+      <dl class="kv"><dt>Month</dt><dd>${esc(monthLabel(period))}</dd></dl>
+      ${c && c.lines && c.lines.length ? `
+        <div class="sectionhead">What it covers</div>
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          ${c.lines.map(l => `<tr>
+            <td style="padding:6px 0;color:var(--ink-2)">${esc(l.name)}</td>
+            <td style="padding:6px 0;text-align:right" class="mono-sm">${money(l.amount)}</td>
+          </tr>`).join('')}
+          <tr><td style="padding:9px 0 0;border-top:1px solid var(--line);font-weight:600">Total</td>
+              <td style="padding:9px 0 0;border-top:1px solid var(--line);text-align:right"
+                  class="mono-sm"><b>${money(c.total)}</b></td></tr>
+        </table>` : '<p class="help">No amount has been set for this month.</p>'}
+      ${c && c.paid_name ? `<p class="help" style="margin-top:12px">Marked paid by
+        ${esc(c.paid_name)} on ${esc(dateTime(c.paid_at))}${
+        c.method ? ' \u00b7 ' + esc(c.method) : ''}</p>` : ''}
+      ${c && c.note ? `<div class="msg info" style="margin-top:12px">
+        <span class="ic" aria-hidden="true">i</span><span>${esc(c.note)}</span></div>` : ''}
+    </div>
+    <div class="dfoot">
+      ${ME.role === 'admin' && c ? (c.status === 'paid'
+        ? `<button class="btn ghost" data-scpaid="0|${c.id}">Mark unpaid</button>`
+        : `<button class="btn" data-scpaid="1|${c.id}">Mark paid</button>`) : ''}
+      <button class="btn ghost" data-close>Close</button>
+    </div>`);
+}
 
 /* ----- flat detail drawer ----- */
 async function openFlatDrawer(flatId){
@@ -2095,6 +2310,22 @@ async function loadMine(){
   renderRejectNotice(bills || []);
   renderUploadSummary(cur);
 
+  sb.from('service_charges').select('*').eq('flat_id', f.id)
+    .order('period', {ascending:false}).then(({ data: scs }) => {
+      $('mineService').innerHTML = (scs && scs.length) ? scs.map(c => `
+        <div class="row">
+          <span class="no" style="min-width:104px">${esc(monthLabel(c.period))}</span>
+          <div class="nm"><b>${money(c.total)}</b>
+            <small>${(c.lines||[]).map(l => esc(l.name) + ' ' + money(l.amount)).join(' \u00b7 ')
+              || 'no breakdown'}</small></div>
+          <span class="pill ${c.status==='paid'?'verified':'unpaid'}">
+            <span class="ic" aria-hidden="true">${c.status==='paid'?'\u2713':'!'}</span>
+            ${c.status==='paid'?'Paid':'Outstanding'}</span>
+        </div>`).join('')
+        : `<div class="empty"><div class="t">Nothing assigned yet</div>
+           <div>The committee sets this each month.</div></div>`;
+    });
+
   $('mineRows').innerHTML = (bills||[]).length ? bills.map(b => `
     <div class="row">
       <span class="no" style="min-width:104px">${esc(monthLabel(b.period))}</span>
@@ -2248,6 +2479,7 @@ async function loadAdmin(){
 
   renderQueue(); renderRequests(); renderAdminFlats(); renderAdminContacts();
   renderAdminNotices(); renderAdminBuilding(); renderUsers();
+  renderScLines(); await loadServicePeriod();
 }
 
 function queueRows(){
@@ -2561,6 +2793,208 @@ function openFlatEditor(id){
     closeLayer(); toast(f.flat_no + ' updated');
   });
 }
+
+/* ----- service charge (committee) ----- */
+function scLineTotal(){
+  return COMPONENTS.reduce((sum, c) => {
+    const el = document.querySelector(`[data-sccomp="${c.id}"]`);
+    const v = el ? parseFloat(el.value) : NaN;
+    return sum + (isNaN(v) ? 0 : v);
+  }, 0);
+}
+function scPaintTotal(){ $('scTotal').textContent = money(scLineTotal()); }
+
+function renderScLines(){
+  $('scLines').innerHTML = COMPONENTS.map(c => `
+    <span class="lbl2">${esc(c.name)}</span>
+    <input data-sccomp="${c.id}" type="number" step="0.01" min="0" placeholder="0"
+           aria-label="${esc(c.name)} amount">`).join('');
+  $('scLines').addEventListener('input', scPaintTotal);
+  scPaintTotal();
+}
+
+function renderScPicker(){
+  const flats = FLATS.filter(f => !f.is_common);
+  $('scPicker').innerHTML = flats.map(f => {
+    const has = !!SC_PERIOD[f.id];
+    return `<button class="pick ${has ? 'done' : ''}" data-pick="${f.id}"
+      aria-pressed="${SC_PICK.has(f.id)}"
+      title="${has ? 'already assigned this month' : 'not assigned yet'}">${esc(f.flat_no)}</button>`;
+  }).join('');
+  $('scPickCount').textContent = SC_PICK.size
+    ? `${SC_PICK.size} flat${SC_PICK.size===1?'':'s'} selected`
+    : 'none selected';
+}
+
+$('scPicker').addEventListener('click', e => {
+  const b = e.target.closest('[data-pick]'); if (!b) return;
+  const id = Number(b.dataset.pick);
+  if (SC_PICK.has(id)) SC_PICK.delete(id); else SC_PICK.add(id);
+  b.setAttribute('aria-pressed', String(SC_PICK.has(id)));
+  $('scPickCount').textContent = SC_PICK.size
+    ? `${SC_PICK.size} flat${SC_PICK.size===1?'':'s'} selected` : 'none selected';
+});
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-pickall]'); if (!b) return;
+  const flats = FLATS.filter(f => !f.is_common);
+  SC_PICK = new Set(
+    b.dataset.pickall === 'all'        ? flats.map(f => f.id) :
+    b.dataset.pickall === 'unassigned' ? flats.filter(f => !SC_PERIOD[f.id]).map(f => f.id) : []);
+  renderScPicker();
+});
+
+async function loadServicePeriod(){
+  const period = $('scPeriod').value || thisMonth();
+  const { data } = await sb.from('service_charges').select('*').eq('period', period);
+  SC_PERIOD = Object.fromEntries((data || []).map(r => [r.flat_id, r]));
+  renderScPicker();
+  renderScRows();
+}
+$('scPeriod').onchange = () => { SC_PICK.clear(); loadServicePeriod(); };
+
+$('scCopyLast').onclick = () => busy($('scCopyLast'), 'Loading\u2026', async () => {
+  const period = $('scPeriod').value || thisMonth();
+  const [y, m] = period.split('-').map(Number);
+  const prev = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
+  const { data } = await sb.from('service_charges').select('lines')
+    .eq('period', prev).limit(1).maybeSingle();
+  if (!data || !data.lines || !data.lines.length)
+    return toast('Nothing was assigned in ' + monthLabel(prev), 'err');
+  COMPONENTS.forEach(c => {
+    const el = document.querySelector(`[data-sccomp="${c.id}"]`);
+    const hit = data.lines.find(l => l.name === c.name);
+    if (el) el.value = hit ? hit.amount : '';
+  });
+  scPaintTotal();
+  toast('Copied the amounts from ' + monthLabel(prev));
+});
+
+$('scApply').onclick = () => busy($('scApply'), 'Assigning\u2026', async () => {
+  const period = $('scPeriod').value;
+  if (!period) return toast('Pick a month', 'err');
+  if (!SC_PICK.size) return toast('Select at least one flat', 'err');
+
+  const lines = COMPONENTS.map(c => {
+    const el = document.querySelector(`[data-sccomp="${c.id}"]`);
+    const v = el ? parseFloat(el.value) : NaN;
+    return isNaN(v) ? null : { name: c.name, amount: v };
+  }).filter(Boolean);
+
+  if (!lines.length) return toast('Enter at least one amount', 'err');
+
+  const alreadyPaid = [...SC_PICK].filter(id =>
+    SC_PERIOD[id] && SC_PERIOD[id].status === 'paid');
+
+  const go = await confirmDialog({
+    title: 'Assign the service charge',
+    body: `<dl class="kv">
+        <dt>Month</dt><dd><b>${esc(monthLabel(period))}</b></dd>
+        <dt>Flats</dt><dd><b>${SC_PICK.size}</b> selected</dd>
+        <dt>Each pays</dt><dd><b>${money(scLineTotal())}</b></dd>
+      </dl>
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;margin-top:12px">
+        ${lines.map(l => `<tr>
+          <td style="padding:4px 0;color:var(--muted)">${esc(l.name)}</td>
+          <td style="padding:4px 0;text-align:right" class="mono-sm">${money(l.amount)}</td>
+        </tr>`).join('')}
+      </table>
+      ${alreadyPaid.length ? `<div class="msg warn" style="margin-top:12px">
+        <span class="ic" aria-hidden="true">\u25b2</span><span>${alreadyPaid.length} of these
+        ${alreadyPaid.length===1?'has':'have'} already been paid and will be left untouched.</span></div>` : ''}`,
+    confirmText: 'Assign to ' + SC_PICK.size + ' flat' + (SC_PICK.size===1?'':'s')
+  });
+  if (!go) return;
+
+  const { data, error } = await sb.rpc('assign_service_charges', {
+    p_period: period, p_flat_ids: [...SC_PICK], p_lines: lines });
+  if (error) return toast(error.message, 'err');
+
+  banner($('scMsg'), `${data} flat${data===1?'':'s'} assigned for ${monthLabel(period)}.`, 'ok');
+  SC_PICK.clear();
+  await loadServicePeriod();
+  await loadBoard();
+});
+
+function renderScRows(){
+  const rows = FLATS.filter(f => !f.is_common && SC_PERIOD[f.id]);
+  const paid = rows.filter(f => SC_PERIOD[f.id].status === 'paid').length;
+  const billed = rows.reduce((s,f) => s + Number(SC_PERIOD[f.id].total || 0), 0);
+  const got = rows.filter(f => SC_PERIOD[f.id].status === 'paid')
+                  .reduce((s,f) => s + Number(SC_PERIOD[f.id].total || 0), 0);
+
+  $('scMetrics').innerHTML = `
+    <div class="metric ok"><b>${paid}</b><span class="k">Paid</span>
+      <span class="d">of ${rows.length} assigned</span></div>
+    <div class="metric bad"><b>${rows.length - paid}</b><span class="k">Outstanding</span>
+      <span class="d">still to collect</span></div>
+    <div class="metric neutral"><b>${money(got)}</b><span class="k">Collected</span>
+      <span class="d">of ${money(billed)}</span></div>`;
+
+  if (!rows.length){
+    $('scRows').innerHTML = `<div class="empty"><div class="t">Nothing assigned yet</div>
+      <div>Set the amounts above, pick the flats, and assign.</div></div>`;
+    return;
+  }
+  $('scRows').innerHTML = rows.map(f => {
+    const c = SC_PERIOD[f.id];
+    return `<div class="row">
+      <span class="no">${esc(f.flat_no)}</span>
+      <div class="nm"><b>${money(c.total)}</b>
+        ${c.paid_name ? `<small>paid \u00b7 ${esc(c.paid_name)} \u00b7 ${esc(ago(c.paid_at))}</small>`
+          : '<small>not collected yet</small>'}</div>
+      <span class="pill ${c.status==='paid'?'verified':'unpaid'}">
+        <span class="ic" aria-hidden="true">${c.status==='paid'?'\u2713':'!'}</span>
+        ${c.status==='paid'?'Paid':'Outstanding'}</span>
+      ${c.status==='paid'
+        ? `<button class="btn ghost sm" data-scpaid="0|${c.id}">Undo</button>`
+        : `<button class="btn sm" data-scpaid="1|${c.id}">Mark paid</button>`}
+    </div>`;
+  }).join('');
+}
+
+/* mark paid / undo, from either the committee list or the board drawer */
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-scpaid]'); if (!t) return;
+  const [flag, id] = t.dataset.scpaid.split('|');
+  const paying = flag === '1';
+
+  let method = null, note = null;
+  if (paying){
+    const res = await confirmDialog({ title:'Mark as paid',
+      body:`<p style="margin-top:0">This records that the money has been received.
+        It is written to the log against your name.</p>
+        <div class="field" style="margin-bottom:0"><label for="scMethod">How was it paid</label>
+          <select id="scMethod">
+            <option>Cash</option><option>bKash</option><option>Nagad</option>
+            <option>Bank transfer</option><option>Other</option></select></div>`,
+      confirmText:'Mark paid' });
+    if (!res) return;
+    const el = document.getElementById('scMethod');
+    method = el ? el.value : null;
+  } else {
+    const res = await confirmDialog({ title:'Mark as unpaid again?',
+      body:'<p style="margin:0">Use this if it was recorded by mistake. The change is logged.</p>',
+      confirmText:'Mark unpaid', danger:true,
+      noteLabel:'Reason', noteRequired:true, notePlaceholder:'e.g. recorded against the wrong flat' });
+    if (!res) return;
+    note = res.note;
+  }
+
+  await busy(t, '', async () => {
+    const patch = paying
+      ? { status:'paid', paid_at:new Date().toISOString(), paid_by:ME.id,
+          paid_name: ME.full_name || ME.email, method, note:null }
+      : { status:'unpaid', paid_at:null, paid_by:null, paid_name:null, method:null, note };
+    const { error } = await sb.from('service_charges').update(patch).eq('id', id);
+    if (error) return toast(error.message, 'err');
+    closeLayer();
+    toast(paying ? 'Recorded as paid' : 'Marked unpaid');
+    await loadServicePeriod();
+    await loadBoard();
+    await loadMine();
+  });
+});
 
 /* ----- notice board (committee) ----- */
 function renderAdminNotices(){
