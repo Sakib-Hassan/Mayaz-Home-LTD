@@ -1,78 +1,85 @@
-# Keeps the Supabase project awake.
+# Keeps the Supabase project awake, and takes a weekly backup.
 #
-# Free Supabase projects pause after 7 days with no database activity.
-# Residents only use this app at the start and end of the month, so without
-# this the project sleeps mid-month.
-#
-# Runs DAILY, not twice weekly: GitHub's scheduled runs are best-effort and get
-# dropped when their queue is busy, so a twice-weekly schedule has no margin
-# against a 7-day deadline. Daily means several runs can be skipped in a row
-# and the project still never sleeps.
+# Free Supabase projects sleep after 7 days with no activity, and residents
+# only use the app at the start and end of the month. This pings daily so
+# that never happens, and on Mondays exports the data to CSV in this repo.
 #
 # Put this file at:  .github/workflows/keep-awake.yml
 #
-# Needs ONE repository VARIABLE and ONE repository SECRET
-# (Settings -> Secrets and variables -> Actions):
+# Needs, under Settings -> Secrets and variables -> Actions:
 #
-#   Variables tab:  SUPABASE_URL   https://abcdefgh.supabase.co  (no trailing slash)
-#   Secrets tab:    SUPABASE_KEY   the publishable / anon key
+#   Variables tab:
+#     SUPABASE_URL       https://abcdefgh.supabase.co   (no trailing slash)
 #
-# The URL is a VARIABLE, not a secret, on purpose: it is already public in
-# index.html, and as a variable it prints in the logs in plain text — so a typo
-# or a stray space is visible immediately instead of being masked as ***.
- 
+#   Secrets tab:
+#     SUPABASE_KEY       the publishable / anon key
+#     BACKUP_EMAIL       a committee account's email
+#     BACKUP_PASSWORD    that account's password
+#
+# The backup signs in as a normal committee account rather than using the
+# service_role key. That key bypasses every security rule in the database,
+# and storing it here would mean a compromised repository hands over the
+# whole project. A committee login can read what the committee can read,
+# which is all a backup needs.
+
 name: Keep Supabase awake
- 
+
 on:
   schedule:
-    # 03:17 UTC daily (09:17 Dhaka). Deliberately not on the hour — on-the-hour
-    # schedules are the most heavily contended and the most often dropped.
+    # 03:17 UTC daily (09:17 Dhaka). Deliberately not on the hour — those
+    # slots are the most contended and the most often dropped.
     - cron: '17 3 * * *'
   workflow_dispatch:
- 
+
 permissions:
   contents: write
- 
+
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Check the secrets are set
+      - name: Check the configuration
+        id: cfg
         env:
-          URL: ${{ vars.SUPABASE_URL }}
-          KEY: ${{ secrets.SUPABASE_KEY }}
+          RAW_URL: ${{ vars.SUPABASE_URL }}
+          RAW_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
+          # Strip whitespace, including a trailing newline copied with the
+          # value — invisible in logs, and it broke this job once already.
+          URL=$(printf '%s' "$RAW_URL" | tr -d '[:space:]')
+          KEY=$(printf '%s' "$RAW_KEY" | tr -d '[:space:]')
+          echo "raw URL length: ${#RAW_URL}, cleaned: ${#URL}"
+          echo "raw KEY length: ${#RAW_KEY}, cleaned: ${#KEY}"
+
           fail=0
           if [ -z "$URL" ]; then
-            echo "::error::SUPABASE_URL is empty. Add it as a REPOSITORY secret under Settings -> Secrets and variables -> Actions -> Secrets tab."
+            echo "::error::SUPABASE_URL is empty. Add it on the Variables tab."
             fail=1
           else
-            echo "SUPABASE_URL is set (${#URL} characters, starts with ${URL:0:8})"
             case "$URL" in https://*) ;; *) echo "::error::SUPABASE_URL must start with https://"; fail=1 ;; esac
-            case "$URL" in */) echo "::error::Remove the trailing slash from SUPABASE_URL"; fail=1 ;; esac
+            URL="${URL%/}"
+            echo "using URL: $URL"
           fi
-          if [ -z "$KEY" ]; then
-            echo "::error::SUPABASE_KEY is empty. Same place as above."
-            fail=1
-          else
-            echo "SUPABASE_KEY is set (${#KEY} characters)"
-          fi
+          [ -z "$KEY" ] && { echo "::error::SUPABASE_KEY is empty."; fail=1; }
+
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
           exit $fail
- 
-      # THE PING. Everything after this is housekeeping — if this step passes,
-      # the project stays awake even if a later step fails.
+
+      # THE PING. If this passes the project stays awake, whatever happens
+      # in the steps below.
       - name: Query the database
         env:
-          URL: ${{ vars.SUPABASE_URL }}
-          KEY: ${{ secrets.SUPABASE_KEY }}
+          URL: ${{ steps.cfg.outputs.url }}
+          KEY: ${{ steps.cfg.outputs.key }}
         run: |
           ok=0
           for attempt in 1 2 3; do
             code=$(curl -s -m 30 -o /tmp/out.txt -w "%{http_code}" \
               "$URL/rest/v1/flats?select=id&limit=1" \
-              -H "apikey: $KEY" \
-              -H "Authorization: Bearer $KEY") || true
-            echo "attempt $attempt -> HTTP $code"
+              -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+            cx=$?
+            echo "attempt $attempt -> HTTP $code (curl exit $cx)"
             if [ "$code" = "200" ]; then ok=1; break; fi
             sleep 10
           done
@@ -80,27 +87,69 @@ jobs:
           if [ "$ok" = "1" ]; then
             echo "Database answered. Inactivity timer reset."
           else
-            echo "::error::Supabase never answered with 200 after 3 attempts. Check the key, or whether the project is already paused."
+            echo "::error::Supabase never answered with 200. Check the key, or whether the project is paused."
             exit 1
           fi
- 
-      # GitHub switches off scheduled workflows in a repo with no commits for
-      # 60 days. One commit a week is enough to prevent that, and avoids 365
-      # pointless commits a year. Failures here must NOT fail the job, since
-      # the ping above has already done the important work.
-      - uses: actions/checkout@v5
+
+      # ---------------- weekly backup ----------------
+      # Mondays only. Everything below is best-effort: a failed backup must
+      # not make the job red and hide a failing ping.
+      - uses: actions/checkout@v4
         continue-on-error: true
-      - name: Weekly heartbeat commit
+
+      - name: Export the data to CSV
+        id: backup
         continue-on-error: true
+        env:
+          URL: ${{ steps.cfg.outputs.url }}
+          KEY: ${{ steps.cfg.outputs.key }}
+          EMAIL: ${{ secrets.BACKUP_EMAIL }}
+          PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
         run: |
           if [ "$(date -u +%u)" != "1" ]; then
-            echo "Not Monday — skipping the heartbeat commit."
-            exit 0
+            echo "Not Monday — skipping the backup."
+            echo "did=no" >> "$GITHUB_OUTPUT"; exit 0
           fi
+          if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
+            echo "::warning::BACKUP_EMAIL / BACKUP_PASSWORD are not set, so no backup was taken."
+            echo "did=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          # sign in as the committee account and use its token, so row level
+          # security still applies and no privileged key is involved
+          TOKEN=$(curl -s -m 30 -X POST "$URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $KEY" -H "Content-Type: application/json" \
+            -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
+
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::Could not sign in as the backup account. No backup taken."
+            echo "did=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          mkdir -p backups
+          rc=0
+          for t in flats bills service_charges contacts profiles change_requests notices; do
+            code=$(curl -s -m 60 -o "backups/$t.csv" -w "%{http_code}" \
+              "$URL/rest/v1/$t?select=*" \
+              -H "apikey: $KEY" -H "Authorization: Bearer $TOKEN" \
+              -H "Accept: text/csv")
+            lines=$(wc -l < "backups/$t.csv" 2>/dev/null || echo 0)
+            echo "$t -> HTTP $code, $lines lines"
+            [ "$code" = "200" ] || rc=1
+          done
+
+          date -u +"Backed up %Y-%m-%d %H:%M UTC" > backups/README.txt
+          echo "did=yes" >> "$GITHUB_OUTPUT"
+          exit $rc
+
+      - name: Commit the backup
+        continue-on-error: true
+        run: |
           date -u +"%Y-%m-%dT%H:%M:%SZ" > .last-ping
           git config user.name  "keep-awake"
           git config user.email "actions@github.com"
-          git add .last-ping
-          git diff --staged --quiet || git commit -m "keep-awake ping"
+          git add .last-ping backups 2>/dev/null || git add .last-ping
+          git diff --staged --quiet || git commit -m "keep-awake: ping$(
+            [ "${{ steps.backup.outputs.did }}" = "yes" ] && echo ' + weekly backup')"
           git push
- 
