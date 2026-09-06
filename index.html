@@ -171,6 +171,11 @@ button.metric[aria-pressed=true]{border-color:var(--ink);background:var(--sunk)}
 .metric.bad {border-left-color:var(--bad)}
 .metric.neutral{border-left-color:var(--accent)}
 
+/* the board legend — swatch plus wording for each state */
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:16px 0 0}
+.legend span{display:inline-flex;align-items:center}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:7px;flex:none}
+
 .progress{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
   padding:14px 16px;margin-bottom:16px;box-shadow:var(--sh)}
 .progress .top{display:flex;justify-content:space-between;gap:12px;margin-bottom:9px;
@@ -647,7 +652,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
         <span><i style="background:var(--bad)"></i>Still owed</span>
         <span><i style="background:var(--idle)"></i>Not opened or not set</span>
       </div>
-      <p class="privacy">Every tile carries both charges \u2014 <b>Elec</b> is the electricity bill,
+      <p class="privacy">Every tile carries both charges — <b>Elec</b> is the electricity bill,
         <b>Serv</b> the service charge. The coloured edge is split to match: top half electricity,
         bottom half service charge. Every colour is paired with a word, so the board stays readable
         without relying on colour alone.</p>
