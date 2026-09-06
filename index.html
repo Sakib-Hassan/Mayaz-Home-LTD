@@ -377,6 +377,41 @@ img.preview{object-fit:contain;display:block}
 .filerow .fn{flex:1;font-family:var(--mono);font-size:12px;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
 
+/* ===== reports =================================================== */
+.rpt{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:20px;margin-top:14px;box-shadow:var(--sh)}
+.rpt h4{font-family:var(--cond);font-size:19px;font-weight:600;margin:0}
+.rpt .meta{font-size:12.5px;color:var(--muted);margin:4px 0 16px}
+.rpt table{width:100%;border-collapse:collapse;font-size:13.5px}
+.rpt th{text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;padding:8px 10px 8px 0;border-bottom:1px solid var(--line)}
+.rpt td{padding:8px 10px 8px 0;border-bottom:1px solid var(--line-2);vertical-align:top}
+.rpt tr:last-child td{border-bottom:0}
+.rpt .num{text-align:right;font-family:var(--mono);white-space:nowrap}
+.rpt tfoot td{border-top:2px solid var(--ink);border-bottom:0;font-weight:600;padding-top:10px}
+.rpt .tag{font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);
+  white-space:nowrap}
+.rpt .tag.y{color:var(--ok);background:var(--ok-bg);border-color:var(--ok-line)}
+.rpt .tag.n{color:var(--bad);background:var(--bad-bg);border-color:var(--bad-line)}
+.rpt .tag.w{color:var(--warn);background:var(--warn-bg);border-color:var(--warn-line)}
+.rpt .foot{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);
+  font-size:11.5px;color:var(--faint);display:flex;justify-content:space-between;gap:12px}
+.rpt-scroll{overflow-x:auto}
+
+@media print{
+  body{background:#fff}
+  body * {visibility:hidden}
+  #printRegion, #printRegion * {visibility:visible}
+  #printRegion{position:absolute;left:0;top:0;width:100%;border:0;box-shadow:none;
+    padding:0;margin:0}
+  #printRegion .rpt-scroll{overflow:visible}
+  .noprint{display:none !important}
+  .rpt{border:0;box-shadow:none;padding:0}
+  .rpt table{font-size:11pt}
+  .rpt th,.rpt td{padding:5px 8px 5px 0}
+  @page{margin:14mm}
+}
+
 /* ===== service charge ============================================ */
 .modeswitch{display:inline-flex;background:var(--sunk);border:1px solid var(--line);
   border-radius:99px;padding:3px;gap:2px;margin-bottom:14px}
@@ -746,6 +781,19 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
         <p class="sub">Set and collected by the committee. Nothing to upload.</p>
         <div class="rows" id="mineService"></div>
       </div>
+
+      <div class="block">
+        <div class="pagehead noprint" style="margin-bottom:2px">
+          <h3>Your statement</h3>
+          <div class="acts">
+            <button class="btn sm" id="myStatement">Generate</button>
+            <button class="btn ghost sm hidden" id="myPrint">Print / Save as PDF</button>
+            <button class="btn ghost sm hidden" id="myCsv">CSV</button>
+          </div>
+        </div>
+        <p class="sub noprint">Every month on record for your flat, both charges.</p>
+        <div id="myOut"></div>
+      </div>
     </section>
 
     <!-- ---------- ADMIN ---------- -->
@@ -813,6 +861,30 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
         <h3>Flat records</h3>
         <p class="sub">Grouped by block. Meter numbers edit in place; owner and tenant details open a form.</p>
         <div id="adminFlatRows"></div>
+      </div>
+
+      <div class="block">
+        <h3>Reports</h3>
+        <p class="sub">Print, save as PDF, or export to a spreadsheet.</p>
+        <div class="panel noprint">
+          <div class="row2">
+            <div class="field"><label for="rpKind">Report</label>
+              <select id="rpKind">
+                <option value="monthly">Monthly summary — who paid what</option>
+                <option value="arrears">Arrears — who owes, all months</option>
+                <option value="statement">Flat statement — one flat's history</option>
+                <option value="yearly">Yearly totals — month by month</option>
+              </select></div>
+            <div class="field" id="rpArgWrap"></div>
+          </div>
+          <div class="inline">
+            <button class="btn" id="rpMake">Generate</button>
+            <button class="btn ghost hidden" id="rpPrint">Print / Save as PDF</button>
+            <button class="btn ghost hidden" id="rpCsv">Download CSV</button>
+          </div>
+          <div id="rpMsg" style="margin-top:12px"></div>
+        </div>
+        <div id="rpOut"></div>
       </div>
 
       <div class="block">
@@ -979,7 +1051,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
 const CONFIG = {
   url:      'https://dzvcucceooevdjnfkunt.supabase.co',
   anonKey:  'sb_publishable_hBFkEbi_Mx9wXLrZ2pMUzg_8kh3g_bu',
-  building: 'Mayaz Home LTD',
+  building: 'Moon’s Samsungani Mayaz Home LTD',
 
   // Name of the Edge Function that creates logins, exactly as it appears in
   // Supabase → Edge Functions. The dashboard invents a name like
@@ -2538,7 +2610,7 @@ async function loadAdmin(){
 
   renderQueue(); renderRequests(); renderAdminFlats(); renderAdminContacts();
   renderAdminNotices(); renderAdminBuilding(); renderUsers();
-  renderScLines(); await loadServicePeriod();
+  renderScLines(); rpArgs(); await loadServicePeriod();
 }
 
 function queueRows(){
@@ -2854,6 +2926,300 @@ function openFlatEditor(id){
     closeLayer(); toast(f.flat_no + ' updated');
   });
 }
+
+/* ===== reports =====================================================
+   Four reports, one shape. Each builder returns {title, meta, head, rows,
+   foot} and the renderer turns that into a table on screen, a print layout,
+   or a CSV. Keeping one shape means a new report is a builder, not a new
+   pile of markup. */
+let LAST_REPORT = null;
+
+const stName = st => ({verified:'Verified', submitted:'Awaiting check',
+  unpaid:'Not paid', rejected:'Sent back'}[st] || 'Not opened');
+const tag = (text, kind) => `<span class="tag ${kind}">${esc(text)}</span>`;
+const num = v => `<span class="num">${v}</span>`;
+
+function periodsBetween(list){
+  return [...new Set(list.map(r => r.period))].sort().reverse();
+}
+
+async function buildMonthly(period){
+  const [{ data: bills }, { data: scs }] = await Promise.all([
+    sb.from('bills').select('*').eq('period', period),
+    sb.from('service_charges').select('*').eq('period', period)
+  ]);
+  const B = Object.fromEntries((bills||[]).map(r => [r.flat_id, r]));
+  const S = Object.fromEntries((scs||[]).map(r => [r.flat_id, r]));
+
+  let eB=0, eP=0, sB=0, sP=0;
+  const rows = FLATS.map(f => {
+    const b = B[f.id], c = S[f.id];
+    const ea = b && b.amount != null ? Number(b.amount) : 0;
+    const sa = c ? Number(c.total || 0) : 0;
+    eB += ea; sB += sa;
+    if (b && b.status === 'verified') eP += ea;
+    if (c && c.status === 'paid')     sP += sa;
+    return {
+      cells: [
+        esc(f.flat_no),
+        esc(f.owner_name || (f.is_common ? 'Committee' : '—')),
+        b ? tag(stName(b.status), b.status==='verified'?'y':b.status==='submitted'?'w':'n')
+          : tag('Not opened',''),
+        num(ea ? money(ea) : '—'),
+        f.is_common ? '—' : (c ? tag(c.status==='paid'?'Paid':'Due', c.status==='paid'?'y':'n')
+                               : tag('Not set','')),
+        num(sa ? money(sa) : '—'),
+        num(money(ea + sa))
+      ],
+      csv: [f.flat_no, f.owner_name || '', b ? stName(b.status) : 'Not opened', ea,
+            f.is_common ? '' : (c ? (c.status==='paid'?'Paid':'Due') : 'Not set'), sa, ea + sa]
+    };
+  });
+
+  return {
+    title: 'Monthly summary',
+    meta: monthLabel(period) + ' \u00b7 ' + FLATS.length + ' meters',
+    head: ['Flat','Owner','Electricity','Amount','Service charge','Amount','Total'],
+    rows,
+    foot: ['Total','', '', money(eB), '', money(sB), money(eB + sB)],
+    note: `Electricity collected ${money(eP)} of ${money(eB)} \u00b7 ` +
+          `service charge collected ${money(sP)} of ${money(sB)}`,
+    file: 'monthly-' + period
+  };
+}
+
+async function buildArrears(){
+  const [{ data: bills }, { data: scs }] = await Promise.all([
+    sb.from('bills').select('*').neq('status','verified'),
+    sb.from('service_charges').select('*').eq('status','unpaid')
+  ]);
+  const byFlat = {};
+  (bills||[]).forEach(b => {
+    (byFlat[b.flat_id] ||= {e:[], s:[], eAmt:0, sAmt:0}).e.push(b.period);
+    byFlat[b.flat_id].eAmt += Number(b.amount || 0);
+  });
+  (scs||[]).forEach(c => {
+    (byFlat[c.flat_id] ||= {e:[], s:[], eAmt:0, sAmt:0}).s.push(c.period);
+    byFlat[c.flat_id].sAmt += Number(c.total || 0);
+  });
+
+  let tot = 0;
+  const rows = FLATS.filter(f => byFlat[f.id]).map(f => {
+    const a = byFlat[f.id];
+    const owed = a.eAmt + a.sAmt;
+    tot += owed;
+    const months = ms => ms.length ? ms.sort().map(m => monthLabel(m)).join(', ') : '—';
+    return {
+      cells: [
+        esc(f.flat_no),
+        esc(f.owner_name || '—'),
+        esc(f.phone || '—'),
+        `${a.e.length} \u2014 <span style="color:var(--muted)">${esc(months(a.e))}</span>`,
+        `${a.s.length} \u2014 <span style="color:var(--muted)">${esc(months(a.s))}</span>`,
+        num(money(owed))
+      ],
+      csv: [f.flat_no, f.owner_name || '', f.phone || '',
+            a.e.length, a.e.sort().join(' '), a.s.length, a.s.sort().join(' '), owed],
+      sort: owed
+    };
+  }).sort((x, y) => y.sort - x.sort);
+
+  return {
+    title: 'Arrears',
+    meta: rows.length + ' flat' + (rows.length===1?'':'s') + ' with something outstanding',
+    head: ['Flat','Owner','Phone','Electricity months','Service charge months','Owed'],
+    csvHead: ['Flat','Owner','Phone','Elec months count','Elec months',
+              'Service months count','Service months','Owed'],
+    rows,
+    foot: ['Total','','','','', money(tot)],
+    note: 'Amounts only count months where a figure has been recorded.',
+    file: 'arrears-' + thisMonth()
+  };
+}
+
+async function buildStatement(flatId){
+  const f = FLATS.find(x => x.id === flatId);
+  const [{ data: bills }, { data: scs }] = await Promise.all([
+    sb.from('bills').select('*').eq('flat_id', flatId),
+    sb.from('service_charges').select('*').eq('flat_id', flatId)
+  ]);
+  const B = Object.fromEntries((bills||[]).map(r => [r.period, r]));
+  const S = Object.fromEntries((scs||[]).map(r => [r.period, r]));
+  const periods = periodsBetween([...(bills||[]), ...(scs||[])]);
+
+  let eT=0, sT=0, owed=0;
+  const rows = periods.map(p => {
+    const b = B[p], c = S[p];
+    const ea = b && b.amount != null ? Number(b.amount) : 0;
+    const sa = c ? Number(c.total || 0) : 0;
+    eT += ea; sT += sa;
+    if (!b || b.status !== 'verified') owed += ea;
+    if (c && c.status !== 'paid')      owed += sa;
+    return {
+      cells: [
+        esc(monthLabel(p)),
+        b ? tag(stName(b.status), b.status==='verified'?'y':b.status==='submitted'?'w':'n') : '—',
+        num(ea ? money(ea) : '—'),
+        c ? tag(c.status==='paid'?'Paid':'Due', c.status==='paid'?'y':'n') : '—',
+        num(sa ? money(sa) : '—'),
+        num(money(ea + sa))
+      ],
+      csv: [p, b ? stName(b.status) : '', ea, c ? (c.status==='paid'?'Paid':'Due') : '', sa, ea+sa]
+    };
+  });
+
+  return {
+    title: 'Statement — ' + (f ? f.flat_no : ''),
+    meta: (f && f.owner_name ? f.owner_name + ' \u00b7 ' : '') +
+          rows.length + ' month' + (rows.length===1?'':'s') + ' on record',
+    head: ['Month','Electricity','Amount','Service charge','Amount','Total'],
+    rows,
+    foot: ['Total','', money(eT), '', money(sT), money(eT + sT)],
+    note: owed > 0 ? 'Outstanding across all months: ' + money(owed) : 'Nothing outstanding.',
+    file: 'statement-' + (f ? f.flat_no : flatId)
+  };
+}
+
+async function buildYearly(year){
+  const like = year + '-%';
+  const [{ data: bills }, { data: scs }] = await Promise.all([
+    sb.from('bills').select('*').like('period', like),
+    sb.from('service_charges').select('*').like('period', like)
+  ]);
+  const months = [];
+  for (let m = 1; m <= 12; m++) months.push(year + '-' + String(m).padStart(2,'0'));
+
+  let a=0,b2=0,c2=0,d=0;
+  const rows = months.map(p => {
+    const bs = (bills||[]).filter(x => x.period === p);
+    const ss = (scs ||[]).filter(x => x.period === p);
+    const eB = bs.reduce((s,x) => s + Number(x.amount||0), 0);
+    const eP = bs.filter(x => x.status==='verified').reduce((s,x) => s + Number(x.amount||0), 0);
+    const sB = ss.reduce((s,x) => s + Number(x.total||0), 0);
+    const sP = ss.filter(x => x.status==='paid').reduce((s,x) => s + Number(x.total||0), 0);
+    a+=eB; b2+=eP; c2+=sB; d+=sP;
+    return {
+      cells: [esc(monthLabel(p)), num(eB?money(eB):'—'), num(eP?money(eP):'—'),
+              num(sB?money(sB):'—'), num(sP?money(sP):'—'),
+              num(money((eB - eP) + (sB - sP)))],
+      csv: [p, eB, eP, sB, sP, (eB-eP)+(sB-sP)]
+    };
+  });
+
+  return {
+    title: 'Yearly totals — ' + year,
+    meta: 'Every month of ' + year,
+    head: ['Month','Electricity billed','Electricity collected',
+           'Service billed','Service collected','Still owed'],
+    rows,
+    foot: ['Total', money(a), money(b2), money(c2), money(d), money((a-b2)+(c2-d))],
+    note: 'Months with no activity are shown as blank rather than omitted.',
+    file: 'yearly-' + year
+  };
+}
+
+function renderReport(r, targetId){
+  LAST_REPORT = r;
+  $(targetId).innerHTML = `
+    <div class="rpt">
+      <h4>${esc(r.title)}</h4>
+      <div class="meta">${esc(CONFIG.building)} \u00b7 ${esc(r.meta)}</div>
+      <div class="rpt-scroll">
+        <table>
+          <thead><tr>${r.head.map((h,i) =>
+            `<th${i>=2?' style="text-align:right"':''}>${esc(h)}</th>`).join('')}</tr></thead>
+          <tbody>${r.rows.length
+            ? r.rows.map(row => `<tr>${row.cells.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')
+            : `<tr><td colspan="${r.head.length}" style="padding:22px 0;color:var(--muted)">
+                Nothing to report.</td></tr>`}</tbody>
+          ${r.foot ? `<tfoot><tr>${r.foot.map((c,i) =>
+            `<td${i>0?' class="num"':''}>${c}</td>`).join('')}</tr></tfoot>` : ''}
+        </table>
+      </div>
+      ${r.note ? `<p class="meta" style="margin:14px 0 0">${esc(r.note)}</p>` : ''}
+      <div class="foot"><span>${esc(CONFIG.building)}</span>
+        <span>Generated ${esc(dateTime(new Date().toISOString()))}</span></div>
+    </div>`;
+}
+
+function printReport(targetId){
+  const el = $(targetId).querySelector('.rpt');
+  if (!el) return toast('Generate a report first', 'err');
+  const had = el.id;
+  el.id = 'printRegion';
+  window.print();
+  setTimeout(() => { el.id = had || ''; }, 400);
+}
+
+function csvReport(r){
+  if (!r) return toast('Generate a report first', 'err');
+  const esc2 = v => {
+    const t = String(v ?? '');
+    return /[",\n]/.test(t) ? '"' + t.replace(/"/g,'""') + '"' : t;
+  };
+  const head = r.csvHead || r.head;
+  const lines = [head.map(esc2).join(','),
+                 ...r.rows.map(row => row.csv.map(esc2).join(','))];
+  const blob = new Blob(['\ufeff' + lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = r.file + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* the second field changes with the report chosen */
+function rpArgs(){
+  const kind = $('rpKind').value;
+  const wrap = $('rpArgWrap');
+  if (kind === 'monthly')
+    wrap.innerHTML = `<label for="rpPeriod">Month</label>
+      <input id="rpPeriod" type="month" value="${thisMonth()}">`;
+  else if (kind === 'yearly')
+    wrap.innerHTML = `<label for="rpYear">Year</label>
+      <input id="rpYear" type="number" min="2020" max="2100" value="${new Date().getFullYear()}">`;
+  else if (kind === 'statement')
+    wrap.innerHTML = `<label for="rpFlat">Flat</label>
+      <select id="rpFlat">${FLATS.map(f =>
+        `<option value="${f.id}">${esc(f.flat_no)}</option>`).join('')}</select>`;
+  else
+    wrap.innerHTML = `<label>&nbsp;</label>
+      <p class="help" style="margin:0">Covers every month with something unpaid.</p>`;
+}
+
+$('rpKind').onchange = rpArgs;
+
+$('rpMake').onclick = () => busy($('rpMake'), 'Building\u2026', async () => {
+  banner($('rpMsg'), '');
+  try {
+    const kind = $('rpKind').value;
+    let r;
+    if (kind === 'monthly')        r = await buildMonthly($('rpPeriod').value || thisMonth());
+    else if (kind === 'arrears')   r = await buildArrears();
+    else if (kind === 'statement') r = await buildStatement(Number($('rpFlat').value));
+    else                           r = await buildYearly(Number($('rpYear').value));
+    renderReport(r, 'rpOut');
+    $('rpPrint').classList.remove('hidden');
+    $('rpCsv').classList.remove('hidden');
+    $('rpOut').scrollIntoView({behavior:'smooth', block:'start'});
+  } catch (e){
+    banner($('rpMsg'), 'Could not build that report: ' + esc(e.message || e), 'err');
+  }
+});
+
+$('rpPrint').onclick = () => printReport('rpOut');
+$('rpCsv').onclick   = () => csvReport(LAST_REPORT);
+
+/* ----- the resident's own statement ----- */
+$('myStatement').onclick = () => busy($('myStatement'), 'Building\u2026', async () => {
+  if (!ME.flat_id) return toast('Your login is not linked to a flat yet', 'err');
+  const r = await buildStatement(ME.flat_id);
+  renderReport(r, 'myOut');
+  $('myPrint').classList.remove('hidden');
+  $('myCsv').classList.remove('hidden');
+});
+$('myPrint').onclick = () => printReport('myOut');
+$('myCsv').onclick   = () => csvReport(LAST_REPORT);
 
 /* ----- service charge (committee) ----- */
 function scLineTotal(){
