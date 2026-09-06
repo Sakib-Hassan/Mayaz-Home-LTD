@@ -886,6 +886,7 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
             <button class="btn" id="rpMake">Generate</button>
             <button class="btn ghost hidden" id="rpPrint">Print / Save as PDF</button>
             <button class="btn ghost hidden" id="rpCsv">Download CSV</button>
+            <button class="btn ghost" id="rpRemind" style="margin-left:auto">Reminder message</button>
           </div>
           <div id="rpMsg" style="margin-top:12px"></div>
         </div>
@@ -895,7 +896,8 @@ button.badge.ext:hover{border-color:var(--accent);color:var(--accent)}
       <div class="block">
         <h3>Service charge</h3>
         <p class="sub">Assign amounts to the flats that share a rate, then mark them paid as
-          the money comes in.</p>
+          the money comes in. The master meter is a building expense and carries electricity
+          only, so it is not listed here.</p>
 
         <div class="panel">
           <div class="row2" style="align-items:end">
@@ -1583,6 +1585,19 @@ function tileHtml(f, focus){
       <span class="v2"><span aria-hidden="true">${meta.ic}</span> ${meta.label}</span>
       ${amount != null ? `<span class="money">${money(amount)}</span>` : ''}
     </span>`;
+
+  // The master meter is a building expense, not a residence: electricity
+  // only, and the edge stays one colour rather than pretending to a second.
+  if (f.is_common){
+    return `<button class="tile" style="--c1:${pw.col};--c2:${pw.col}"
+        data-tile="${f.id}"
+        aria-label="${esc(f.flat_no)} \u2014 electricity ${pw.label}">
+      <b>${esc(f.flat_no)}</b>
+      ${row('Elec', pw, b ? b.amount : null, true)}
+      <span class="line dim"><span class="k2">Serv</span>
+        <span class="v2">not applicable</span></span>
+    </button>`;
+  }
 
   return `<button class="tile ${b && b.status === 'rejected' ? 'rejected' : ''}"
       style="--c1:${pw.col};--c2:${sc.col}"
@@ -3053,8 +3068,9 @@ async function buildStatement(flatId){
   const periods = periodsBetween([...(bills||[]), ...(scs||[])]);
 
   let eT=0, sT=0, owed=0;
+  const common = f && f.is_common;
   const rows = periods.map(p => {
-    const b = B[p], c = S[p];
+    const b = B[p], c = common ? null : S[p];
     const ea = b && b.amount != null ? Number(b.amount) : 0;
     const sa = c ? Number(c.total || 0) : 0;
     eT += ea; sT += sa;
@@ -3210,6 +3226,84 @@ $('rpMake').onclick = () => busy($('rpMake'), 'Building\u2026', async () => {
   } catch (e){
     banner($('rpMsg'), 'Could not build that report: ' + esc(e.message || e), 'err');
   }
+});
+
+/* ----- a message for the building's WhatsApp group -----------------
+   Residents get no notification of anything and never will: the accounts
+   use fabricated email addresses. The building already has a group chat,
+   so the useful thing is text the committee can paste into it. */
+async function reminderText(period, which){
+  const [{ data: bills }, { data: scs }] = await Promise.all([
+    sb.from('bills').select('*').eq('period', period),
+    sb.from('service_charges').select('*').eq('period', period)
+  ]);
+  const B = Object.fromEntries((bills||[]).map(r => [r.flat_id, r]));
+  const S = Object.fromEntries((scs||[]).map(r => [r.flat_id, r]));
+  const flats = FLATS.filter(f => !f.is_common);
+
+  const eDue = flats.filter(f => !B[f.id] || B[f.id].status !== 'verified')
+                    .map(f => f.flat_no);
+  const sDue = flats.filter(f => S[f.id] && S[f.id].status !== 'paid')
+                    .map(f => f.flat_no);
+
+  const lines = [`${CONFIG.building} — ${monthLabel(period)}`, ''];
+
+  if (which !== 'service'){
+    lines.push(eDue.length
+      ? `Electricity bill not yet uploaded or verified (${eDue.length}):\n${eDue.join(', ')}`
+      : 'Electricity: all flats done. Thank you.');
+    lines.push('');
+  }
+  if (which !== 'power'){
+    lines.push(sDue.length
+      ? `Service charge still to be paid (${sDue.length}):\n${sDue.join(', ')}`
+      : 'Service charge: all flats settled. Thank you.');
+    lines.push('');
+  }
+  if (which !== 'service' && eDue.length)
+    lines.push(`Please upload your bill copy at:\n${location.origin}${location.pathname}`);
+
+  return lines.join('\n').trim();
+}
+
+$('rpRemind').onclick = () => busy($('rpRemind'), 'Building\u2026', async () => {
+  const period = ($('rpKind').value === 'monthly' && $('rpPeriod'))
+    ? $('rpPeriod').value : thisMonth();
+  const text = await reminderText(period, 'both');
+
+  const w = layer('dialog', `
+    <div class="dhead"><h3>Reminder message</h3>
+      <button class="x" data-close aria-label="Close">\u00d7</button></div>
+    <div class="dbody">
+      <div class="field">
+        <span class="lbl">Include</span>
+        <div class="chipset" id="rmWhich" role="group" aria-label="What to include">
+          <button class="chipbtn" data-which="both" aria-pressed="true">Both</button>
+          <button class="chipbtn" data-which="power" aria-pressed="false">Electricity only</button>
+          <button class="chipbtn" data-which="service" aria-pressed="false">Service charge only</button>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label for="rmText">Message for ${esc(monthLabel(period))}</label>
+        <textarea id="rmText" rows="11" style="font-size:13.5px;line-height:1.5">${esc(text)}</textarea>
+        <div class="help">Edit it before sending if you want to. Nothing is sent from here.</div>
+      </div>
+    </div>
+    <div class="dfoot">
+      <button class="btn ghost" data-close>Close</button>
+      <button class="btn" id="rmCopy">Copy message</button>
+    </div>`);
+
+  w.querySelector('#rmWhich').addEventListener('click', async e => {
+    const b = e.target.closest('[data-which]'); if (!b) return;
+    [...b.parentNode.children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    $('rmText').value = await reminderText(period, b.dataset.which);
+  });
+
+  $('rmCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText($('rmText').value); toast('Message copied'); }
+    catch { $('rmText').select(); toast('Press Ctrl+C to copy', 'err'); }
+  };
 });
 
 $('rpPrint').onclick = () => printReport('rpOut');
